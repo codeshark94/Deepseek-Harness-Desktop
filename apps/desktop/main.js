@@ -6,13 +6,25 @@ const http = require('node:http')
 const path = require('node:path')
 const fs = require('node:fs')
 
-const REPO_ROOT = process.env.DSH_REPO_ROOT || '/Users/seungyeop/workspace/dsh'
+// Resolve the repository root by walking up from the app's own location until
+// a directory with pnpm-workspace.yaml is found. Override with DSH_REPO_ROOT.
+function findRepoRoot(start) {
+  let dir = start
+  while (dir && dir !== path.parse(dir).root) {
+    if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) return dir
+    dir = path.dirname(dir)
+  }
+  return null
+}
+
+const REPO_ROOT = process.env.DSH_REPO_ROOT || findRepoRoot(__dirname) || path.resolve(__dirname, '..', '..')
 const CLI = path.join(REPO_ROOT, 'apps', 'cli', 'lib', 'bin.js')
 const HOST = '127.0.0.1'
 const STARTUP_TIMEOUT_MS = 60_000
-// Ollama launch profile: configurable desktop profile (temperature/top_p/effort via proxy).
-const OLLAMA_PATCH = process.env.DSH_PATCH || '/Users/seungyeop/.ollama/launch/dsh/desktop-ollama.cordis.yml'
-const PROXY_SCRIPT = process.env.DSH_OLLAMA_PROXY || '/Users/seungyeop/.ollama/launch/dsh/llm-proxy-configurable.mjs'
+// Optional Ollama launch profile: a configurable desktop profile
+// (temperature/top_p/effort via proxy). Only used when explicitly configured.
+const OLLAMA_PATCH = process.env.DSH_PATCH
+const PROXY_SCRIPT = process.env.DSH_OLLAMA_PROXY
 
 // Optional Ollama sampling knobs (passed through to the proxy as env vars).
 const OLLAMA_TEMPERATURE = process.env.DSH_OLLAMA_TEMPERATURE
@@ -38,7 +50,6 @@ function findNode() {
   if (!isElectron && process.execPath) candidates.push(process.execPath)
   candidates.push('/opt/homebrew/bin/node')
   candidates.push('/usr/local/bin/node')
-  candidates.push('/Users/seungyeop/.local/share/node-v24.18.0/bin/node')
   candidates.push('node') // last resort: rely on PATH
 
   for (const candidate of candidates) {
@@ -83,8 +94,8 @@ function startProxy() {
       reject(new Error('Could not locate a Node.js executable for the Ollama proxy.'))
       return
     }
-    if (!fs.existsSync(PROXY_SCRIPT)) {
-      // Proxy is optional; if the script is missing, just continue without it.
+    if (!PROXY_SCRIPT || !fs.existsSync(PROXY_SCRIPT)) {
+      // Proxy is optional; if it is not configured or missing, continue without it.
       console.log('[proxy] configurable proxy not found, skipping')
       resolve()
       return
@@ -151,7 +162,7 @@ async function startDsh() {
       return
     }
     if (!fs.existsSync(CLI)) {
-      reject(new Error(`Built dsh CLI not found at ${CLI}.\n\nPlease build the repository first with:\n  pnpm run build`))
+      reject(new Error(`Built dsh CLI not found at ${CLI}.\n\nBuild the repository first with:\n  pnpm run build\n\nOr point DSH_REPO_ROOT at a built checkout.`))
       return
     }
 
