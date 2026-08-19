@@ -100,13 +100,18 @@ export function WorkspacePickFlow({
     if (flowOpen && !flowAvailable) setFlowOpen(false)
   }, [flowOpen, flowAvailable])
   const addEntries: MenuEntry[] = flowAvailable
-    ? [
-      { id: ADD_WORKSPACE, label: t('menu.addWorkspace'), icon: <IconPlusOutline16 size={16} />, disabled: flowBusy },
-      { id: UNGROUPED, label: t('menu.ungrouped'), disabled: flowBusy },
-    ]
+    ? [{ id: ADD_WORKSPACE, label: t('menu.addWorkspace'), icon: <IconPlusOutline16 size={16} />, disabled: flowBusy }]
     : []
-  // With workspaces listed, the add action pins below the scroll region
-  // (divider + always visible); otherwise it IS the menu.
+  // Ungrouped is a real pick target independent of the directory-flow hole:
+  // it must stay selectable even when no Add-workspace affordance is present.
+  // The add-only sidebar surface is specifically for adding Workspaces, so it
+  // does not carry the Ungrouped pick.
+  const ungroupedEntries: MenuEntry[] = addOnly
+    ? []
+    : [{ id: UNGROUPED, label: t('menu.ungrouped'), disabled: flowBusy }]
+  // With workspaces listed, the add actions pin below the scroll region
+  // (divider + always visible); otherwise they ARE the menu. Ungrouped is
+  // always part of the hero picker's pickable set.
   const pinAdd = !addOnly && workspaces.length > 0
   const items: MenuEntry[] = pinAdd
     ? workspaces.map(workspace => ({
@@ -115,10 +120,11 @@ export function WorkspacePickFlow({
       icon: <IconFolderClose16 size={16} />,
       disabled: flowBusy,
     }))
-    : addEntries
-  // Nothing listed and nothing to add with (a composition that mounts this
-  // package without any directory-picker): an empty popover would claim a
-  // choice that does not exist, so the anchor gesture shows nothing at all.
+    : [...addEntries, ...ungroupedEntries]
+  const footerEntries: MenuEntry[] = [...addEntries, ...ungroupedEntries]
+  // The hero picker always has at least Ungrouped to choose, so its menu
+  // cannot be empty; this also lets a composition without any directory-picker
+  // still start a conversation outside a Workspace.
   const menuIsEmpty = items.length === 0
 
   const closeModal = (): void => {
@@ -152,8 +158,11 @@ export function WorkspacePickFlow({
   // only final once the baseline lands — until then the menu stays up with its
   // loading status instead of jumping into a flow the arriving list would have
   // made unnecessary; the add-only surface lists nothing and never waits.
+  // In the hero picker Ungrouped is always present, so Add workspace is never
+  // the sole entry there; the add-only sidebar can still auto-open when Add is
+  // the only action.
   const listSettled = addOnly || workspaceSnapshot.phase === 'ready'
-  const addIsTheOnlyEntry = !pinAdd && listSettled && addEntries.length === 1
+  const addIsTheOnlyEntry = !pinAdd && listSettled && items.length === 1 && items[0]?.id === ADD_WORKSPACE
   // `flowBusy` gates this exactly as it disables the equivalent menu entry: a
   // pick still being adopted owns the surface until it settles.
   useEffect(() => {
@@ -188,14 +197,18 @@ export function WorkspacePickFlow({
     onPick(id as WorkspaceId)
   }
 
+  // The picker's `undefined` means Ungrouped; map it to the internal menu id
+  // so the active no-workspace state gets the trailing check. The add-only
+  // sidebar menu has no current-selection concept, so it keeps the raw value
+  // (no check).
   return (
     <>
       <Menu
         open={open && !addIsTheOnlyEntry && !menuIsEmpty}
         anchor={null}
         items={items}
-        {...pinAdd ? { footer: addEntries } : {}}
-        selectedId={selectedId}
+        {...pinAdd ? { footer: footerEntries } : {}}
+        selectedId={addOnly ? selectedId : (selectedId ?? UNGROUPED)}
         onSelect={handleSelect}
         onClose={onClose}
         side={side}

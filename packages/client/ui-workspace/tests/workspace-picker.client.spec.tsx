@@ -122,6 +122,12 @@ describe('WorkspacePicker', () => {
     expect(b.onPick).toHaveBeenCalledWith(wid('beta'))
   })
 
+  it('selects Ungrouped from the footer while workspaces are listed', () => {
+    const b = mount([workspace('alpha', 'Alpha')])
+    fireEvent.click(screen.getByRole('menuitem', { name: '未分组' }))
+    expect(b.onPick).toHaveBeenCalledWith(undefined)
+  })
+
   it('opens the composed directory flow, adopts its picked path, and selects the returned Workspace', async () => {
     const created = { ...workspace('adopted'), path: '/tmp/project', title: 'project' }
     const createWorkspace = vi.fn(async () => created)
@@ -137,14 +143,16 @@ describe('WorkspacePicker', () => {
     expect(screen.queryByTestId('directory-flow')).toBeNull()
   })
 
-  it('raises the flow straight from the anchor gesture when adding is the only entry', () => {
-    // Nothing to list and one action left: a one-row menu would offer no
-    // choice, so the owner's open request lands in the flow itself.
+  it('keeps Ungrouped selectable when no workspaces are listed and Add is available', () => {
     const b = mount([])
-    expect(screen.queryByRole('menu')).toBeNull()
-    expect(screen.queryByRole('menuitem', { name: '添加工作区…' })).toBeNull()
-    expect(b.onClose).toHaveBeenCalled()
-    expect(screen.getByTestId('directory-flow')).toBeTruthy()
+    // Ungrouped is always a real choice, so the menu is shown instead of
+    // jumping straight into the directory flow.
+    expect(screen.getByRole('menu')).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: '未分组' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: '添加工作区…' })).toBeTruthy()
+    expect(screen.queryByTestId('directory-flow')).toBeNull()
+    fireEvent.click(screen.getByRole('menuitem', { name: '未分组' }))
+    expect(b.onPick).toHaveBeenCalledWith(undefined)
   })
 
   it('treats flow cancellation as a silent no-op', () => {
@@ -237,13 +245,16 @@ describe('WorkspacePicker', () => {
     expect(screen.getByRole('menuitem', { name: '添加工作区…' })).toBeTruthy()
   })
 
-  it('shows no popover at all when nothing is listed and nothing can be added', () => {
-    // A composition mounting this package without any directory-picker: the
-    // hero anchor has neither a Workspace to pick nor a way to add one, so it
-    // must not claim a choice with an empty menu.
+  it('keeps Ungrouped selectable even when there is no directory-flow occupant', () => {
+    // A composition without any directory-picker still has the Ungrouped
+    // choice, so it must not collapse to an empty popover.
     const b = mount([], vi.fn(), occupancySource(false))
-    expect(screen.queryByRole('menu')).toBeNull()
+    expect(screen.getByRole('menu')).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: '未分组' })).toBeTruthy()
+    expect(screen.queryByRole('menuitem', { name: '添加工作区…' })).toBeNull()
     expect(screen.queryByTestId('directory-flow')).toBeNull()
+    fireEvent.click(screen.getByRole('menuitem', { name: '未分组' }))
+    expect(b.onPick).toHaveBeenCalledWith(undefined)
     expect(b.createWorkspace).not.toHaveBeenCalled()
   })
 
@@ -258,16 +269,17 @@ describe('WorkspacePicker', () => {
     act(() => { b.probe.owner!.onPicked('/tmp/project') })
     expect(b.probe.owner!.busy).toBe(true)
     // The list empties under the still-settling adoption (the workspace was
-    // deleted elsewhere), which would otherwise make add the only entry.
+    // deleted elsewhere), which would otherwise change the menu contents.
     act(() => { b.rerenderItems([]) })
     expect(b.createWorkspace).toHaveBeenCalledTimes(1)
     await act(async () => { resolve(created); await pending })
     expect(b.probe.owner!.busy).toBe(false)
   })
 
-  it('hides the add entry while the directory-flow hole is empty', () => {
+  it('hides the add entry but keeps Ungrouped while the directory-flow hole is empty', () => {
     mount([workspace('alpha', 'Alpha')], vi.fn(), occupancySource(false))
     expect(screen.getByRole('menuitem', { name: 'Alpha' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: '未分组' })).toBeTruthy()
     expect(screen.queryByRole('menuitem', { name: '添加工作区…' })).toBeNull()
   })
 
