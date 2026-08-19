@@ -7,7 +7,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { contentHasImage, createUserMessage, BlockAssembler, LlmError } from '@deepseek-ai/dsh-llm'
 import type {
-  ContentBlock, FinishReason, GenerateOptions, Message, TokenUsage, ToolSchema,
+  ContentBlock, FinishReason, GenerateOptions, Message, TokenUsage, ToolSchema, UserMessage,
 } from '@deepseek-ai/dsh-llm'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 
@@ -68,6 +68,16 @@ const COMPACTION_INSTRUCTION = [
 /** Framing that makes the replacement user message established context. */
 const CHECKPOINT_PREAMBLE =
   'This is an automatically generated checkpoint condensing an earlier span of the conversation to free up context. Treat the captured context as established background and build on it without restating it. Continue the task directly from the messages that follow, without acknowledging this checkpoint.'
+
+/**
+ * The fixed summarization instruction as the trailing user message, shared so
+ * overflow recovery can price it through the conversation meter and so the
+ * summarizer replays exactly one instance of it.
+ */
+export const COMPACTION_INSTRUCTION_MESSAGE: UserMessage = createUserMessage({
+  content: [{ type: 'text', text: COMPACTION_INSTRUCTION }],
+  source: { kind: 'plugin', plugin: 'dsh-compaction-basic' },
+})
 
 /**
  * The replayed conversation surface the summarizer condenses. Reproducing the
@@ -145,10 +155,7 @@ export async function summarizeWithLlm(
   const assembler = new BlockAssembler()
   const messages: Message[] = [
     ...input.messages,
-    createUserMessage({
-      content: [{ type: 'text', text: COMPACTION_INSTRUCTION }],
-      source: { kind: 'plugin', plugin: 'dsh-compaction-basic' },
-    }),
+    COMPACTION_INSTRUCTION_MESSAGE,
   ]
   const options: GenerateOptions = {
     provider: target.provider,

@@ -25,9 +25,10 @@ import {
 import {
   assertNoActiveCompaction,
   compactSurfaceRegion,
+  selectCompactableChunk,
   selectCompactableRange,
 } from './region.ts'
-import { summarizeWithLlm } from './summarizer.ts'
+import { summarizeWithLlm, COMPACTION_INSTRUCTION_MESSAGE } from './summarizer.ts'
 import type { SummarizationInput, SummaryResult } from './summarizer.ts'
 import type {
   BasicCompactionConfig,
@@ -76,6 +77,7 @@ const retainTokensSchema = z.number().step(1).min(0)
 const summarizationProviderSchema = z.string()
 const summarizationModelSchema = z.string()
 const maxTokensSchema = z.number().step(1).min(1)
+const overflowChunkHeadroomTokensSchema = z.number().step(1).min(0)
 const compactionRetriesSchema = z.number().step(1).min(0)
 const maxOverflowRetriesSchema = z.number().step(1).min(0)
 
@@ -88,6 +90,7 @@ const modelPolicy: z<ModelCompactPolicyConfig> = z.object({
   summarizationProvider: summarizationProviderSchema,
   summarizationModel: summarizationModelSchema,
   maxTokens: maxTokensSchema,
+  overflowChunkHeadroomTokens: overflowChunkHeadroomTokensSchema,
   compactionRetries: compactionRetriesSchema,
   maxOverflowRetries: maxOverflowRetriesSchema,
 })
@@ -110,6 +113,7 @@ export class BasicCompactionEngine extends CompactionEngine {
     summarizationProvider: summarizationProviderSchema,
     summarizationModel: summarizationModelSchema,
     maxTokens: maxTokensSchema,
+    overflowChunkHeadroomTokens: overflowChunkHeadroomTokensSchema,
     compactionRetries: compactionRetriesSchema,
     maxOverflowRetries: maxOverflowRetriesSchema,
     modelPolicies: z.array(modelPolicy),
@@ -285,9 +289,56 @@ export class BasicCompactionEngine extends CompactionEngine {
         prune.pruneSession(agent.session)
         measurement = meter.measure(agent.session)
       }
-      const range = selectCompactableRange(agent.session, measurement, 0)
-      if (range === null) return null
-      return this.compactRegion(range.start, range.end, agent, signal)
+      // Resolve the routed model's capacity to size overflow-recovery chunks:
+      // compacting the whole overflowing surface in one summarization call
+      // would replay a region that itself exceeds the window, so recovery
+      // instead compacts the oldest content in bounded chunks, each guaranteed
+      // to leave room for the summary output below the window.
+      let contextWindow: number | undefined
+      try {
+        const resolved = await this.ctx.llm.resolveModelInfo(target.provider, target.model, signal)
+        contextWindow = resolved.context?.contextWindow
+      } catch {
+        // An unregistered provider has no adapter to answer capacity questions;
+        // overflow is already provider-confirmed, so recover whole-surface below.
+      }
+
+      // Overflow is provider-confirmed, so a model without advertised capacity
+      // still recovers: fall back to whole-surface compaction (the historical
+      // behavior) when there is no window to size safe chunks against.
+      const fallback = (): Promise<CompactionResult | null> => {
+        const range = selectCompactableRange(agent.session, measurement, 0)
+        return range === null ? Promise.resolve(null) : this.compactRegion(range.start, range.end, agent, signal)
+      }
+      if (contextWindow === undefined) return fallback()
+
+      const spec = resolveCompactSpec(policy, contextWindow)
+      // A chunk plus the replay header, the appended instruction, the summary
+      // output cap, and the reserved headroom must stay below the window, so
+      // every chunk's summarization request fits where the whole surface did
+      // not. The same budget is the recovery target: once the surface drops
+      // this far, a retried request of header + surface + output also fits.
+      const headerTokens = this.ctx.tokenMeter.estimateHeader(agent.session.requestHeader())
+      const chunkBudget = spec.contextWindow
+        - headerTokens
+        - this.ctx.tokenMeter.estimateMessage(COMPACTION_INSTRUCTION_MESSAGE)
+        - spec.maxTokens
+        - spec.overflowChunkHeadroomTokens
+
+      // A window too small to host even a bounded chunk cannot size safe
+      // recovery; fall back to the whole-surface compaction so tiny-window
+      // deployments keep the historical behavior rather than blocking recovery.
+      if (chunkBudget <= 0) return fallback()
+
+      let result: CompactionResult | null = null
+      for (;;) {
+        const range = selectCompactableChunk(agent.session, measurement, chunkBudget)
+        if (range === null) break
+        result = await this.compactRegion(range.start, range.end, agent, signal)
+        measurement = meter.measure(agent.session)
+        if (measurement.totalTokens <= chunkBudget) return result
+      }
+      return result
     }
 
     const context = (await this.ctx.llm.resolveModelInfo(target.provider, target.model, signal)).context

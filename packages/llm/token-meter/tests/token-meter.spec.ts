@@ -145,6 +145,17 @@ describe('TokenMeter pricing', () => {
     expect(service.estimateMessage(textMessage('abcd'))).toBe(9)
   })
 
+  it('prices an epoch header and its absence through the service method', () => {
+    const service = meter()
+    expect(service.estimateHeader(undefined)).toBe(0)
+    const priced = service.estimateHeader({
+      config: { provider: 'p', model: 'm' },
+      system: 'system context',
+      tools: [],
+    })
+    expect(priced).toBeGreaterThan(0)
+  })
+
   it('returns a detached deeply immutable empty measurement', () => {
     const service = meter()
     const session = Session.create(SessionId('empty'))

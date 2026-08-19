@@ -156,6 +156,16 @@ export class TokenMeter extends Service {
     return estimateMessage(message)
   }
 
+  /**
+   * Heuristically price the non-surface request envelope of a canonical header
+   * (instance face of the pure `estimateHeader` export from `estimate.ts`).
+   * @param header - canonical envelope, or undefined for an empty price.
+   * @returns system and tool-schema tokens under the fixed service heuristic.
+   */
+  estimateHeader(header?: EpochHeader): number {
+    return estimateHeader(header)
+  }
+
   /** Catch one session's fold up to the current durable tail. */
   private _sync(session: Session): ReplayState {
     let state = this.states.get(session)

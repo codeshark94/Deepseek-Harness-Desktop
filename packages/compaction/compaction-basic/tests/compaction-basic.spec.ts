@@ -3,7 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { AttachmentId } from '@deepseek-ai/dsh-attachment'
 import BasicCompactionEngine from '@deepseek-ai/dsh-compaction-basic'
 import type { BasicCompactionConfig } from '@deepseek-ai/dsh-compaction-basic'
-import { selectCompactableRange } from '@deepseek-ai/dsh-compaction-basic/src/region.ts'
+import { selectCompactableChunk, selectCompactableRange } from '@deepseek-ai/dsh-compaction-basic/src/region.ts'
 import type { SummarizationInput, SummaryResult } from '@deepseek-ai/dsh-compaction-basic/src/summarizer.ts'
 import { CompactionId, toolPairingBalancedAfter, toolPairingBalancedBefore } from '@deepseek-ai/dsh-compaction'
 import {
@@ -294,6 +294,7 @@ describe('compact configuration and defaults', () => {
       summarizationProvider: '',
       summarizationModel: '',
       maxTokens: 8192,
+      overflowChunkHeadroomTokens: 512,
       compactionRetries: 1,
       maxOverflowRetries: 1,
       modelPolicies: [],
@@ -415,6 +416,7 @@ describe('compact configuration and defaults', () => {
       [{ maxTokens: 0 }, /maxTokens/],
       [{ compactionRetries: -1 }, /compactionRetries/],
       [{ maxOverflowRetries: -1 }, /maxOverflowRetries/],
+      [{ overflowChunkHeadroomTokens: -1 }, /overflowChunkHeadroomTokens/],
       [{ auto: 'yes' }, /auto must be a boolean/],
       [{ summarizationProvider: 1 }, /summarizationProvider must be a string/],
       [{ summarizationModel: 1 }, /summarizationModel must be a string/],
@@ -763,6 +765,35 @@ describe('pressure measurement and retention', () => {
 
     const priced = ctx.tokenMeter.measure(session)
     expect(selectCompactableRange(session, priced, 1)).toBeNull()
+  })
+
+  it('returns the whole compactable range when it fits the chunk budget', () => {
+    const ctx = createContext()
+    const session = conversation(2)
+    const priced = ctx.tokenMeter.measure(session)
+    const whole = selectCompactableRange(session, priced, 0)
+    expect(whole).not.toBeNull()
+    expect(selectCompactableChunk(session, priced, Number.MAX_SAFE_INTEGER)).toEqual(whole)
+  })
+
+  it('cuts a chunk at the largest balanced boundary that fits the budget', () => {
+    const ctx = createContext()
+    const session = conversation(3)
+    const priced = ctx.tokenMeter.measure(session)
+    // A tiny budget admits only the oldest balanced boundary, so the chunk
+    // end stops strictly before the whole compactable range's end.
+    const whole = selectCompactableRange(session, priced, 0)!
+    const chunk = selectCompactableChunk(session, priced, priced.nodes[0]!.tokens + 1)
+    expect(chunk).not.toBeNull()
+    expect(chunk!.end).toBeLessThan(whole.end)
+    expect(chunk!.start).toBe(whole.start)
+  })
+
+  it('declines when even the oldest balanced node exceeds the chunk budget', () => {
+    const ctx = createContext()
+    const session = conversation(3)
+    const priced = ctx.tokenMeter.measure(session)
+    expect(selectCompactableChunk(session, priced, 1)).toBeNull()
   })
 })
 
@@ -1590,7 +1621,11 @@ describe('automatic listener and loader composition', () => {
   })
 
   it('continues overflow recovery with summarization on the pruned surface', async () => {
-    const ctx = createContext(10_000)
+    // A large window leaves the chunk budget well above the (already-pruned)
+    // surface, so one summarization chunk covers it and recovery lands in a
+    // single call. The window 10_000 default with maxTokens 8192 would shrink
+    // the budget below the surface and split it across several calls.
+    const ctx = createContext(100_000)
     void new ToolResultPruner(ctx, {
       thresholdChars: 100,
       headChars: 20,
@@ -1606,6 +1641,22 @@ describe('automatic listener and loader composition', () => {
     expect(session.events.some(event => event.type === 'compaction/summary')).toBe(true)
     expect(compact.calls).toHaveLength(1)
     expect(summarizedText(compact.calls[0]!.input)).toContain('tool result middle pruned')
+  })
+
+  it('chunks overflow compaction across several bounded summarization calls', async () => {
+    // Window 10_000 with the default maxTokens (8192) leaves a ~921-token chunk
+    // budget, far below the ~4.5k-token toolConversation surface, so recovery
+    // must run several bounded summarization chunks before the surface fits.
+    const ctx = createContext(10_000)
+    const compact = new TestCompactionEngine(ctx, {
+      thresholdRatio: 1,
+      retainTokens: 900,
+    })
+    const session = toolConversation()
+
+    expect(await recover(ctx, agent(session, MODEL), overflow())).toBe(true)
+    expect(compact.calls.length).toBeGreaterThan(1)
+    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(true)
   })
 
   it('retries from a durable prune when later overflow summarization throws', async () => {

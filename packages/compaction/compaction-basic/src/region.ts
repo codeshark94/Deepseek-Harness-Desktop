@@ -134,6 +134,41 @@ export function selectCompactableRange(
 }
 
 /**
+ * Select a head-anchored, tool-pair-balanced leading chunk of the compactable
+ * overflow region whose shadowed tokens fit a per-call summarization budget.
+ * Overflow recovery compacts the oldest content in bounded chunks so a replay
+ * that would itself exceed the model window is never handed to the summarizer
+ * whole; the newest retained tail is preserved exactly as `selectCompactableRange`
+ * keeps it.
+ * @param session - session supplying authoritative current surface positions.
+ * @param measurement - unified pressure and surface measurement from the conversation meter.
+ * @param budgetTokens - maximum tokens one selected chunk may shadow.
+ * @returns the inclusive positional seq range, or `null` when no chunk fits.
+ */
+export function selectCompactableChunk(
+  session: Session,
+  measurement: TokenMeasurement,
+  budgetTokens: number,
+): { start: number; end: number } | null {
+  const full = selectCompactableRange(session, measurement, 0)
+  if (full === null) return null
+  const nodes = measurement.nodes
+  const startIdx = nodes.findIndex(node => node.seq === full.start)
+  const endIdx = nodes.findIndex(node => node.seq === full.end)
+  let accumulated = 0
+  let end: number | undefined
+  for (let index = startIdx; index <= endIdx; index += 1) {
+    // oxlint-disable-next-line typescript/no-non-null-assertion
+    const node = nodes[index]!
+    if (accumulated + node.tokens > budgetTokens) break
+    accumulated += node.tokens
+    if (toolPairingBalancedAfter(session, node.seq)) end = node.seq
+  }
+  if (end === undefined) return null
+  return { start: full.start, end }
+}
+
+/**
  * Run the single compaction transaction over one selected positional span.
  * Selection and validation are read-only. Idle/log validation and
  * `compaction/start` are synchronously adjacent, so the durable opening marker is
