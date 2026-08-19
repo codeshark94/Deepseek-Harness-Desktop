@@ -192,6 +192,17 @@ export class WorkspaceRuntime implements IWorkspaces {
   }
 
   /**
+   * Start an Ungrouped New Session: birth a fresh session without any
+   * Workspace folder and navigate to it. The explicit Ungrouped pick in the
+   * new-conversation workspace picker, so it never falls back to a current or
+   * recent Workspace the way {@link startSession} does.
+   */
+  async startUngroupedSession(): Promise<void> {
+    const sessionId = await this.sessions.create({})
+    this.sessions.open(sessionId)
+  }
+
+  /**
    * Register an existing path as a Workspace.
    * @param input - the Host create payload.
    * @returns the created or idempotently resolved Workspace.

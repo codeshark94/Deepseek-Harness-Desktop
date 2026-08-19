@@ -442,6 +442,36 @@ describe('WorkspaceRuntime', () => {
     expect(clear).toHaveBeenCalledOnce()
   })
 
+  it('startUngroupedSession births a fresh session without a Workspace and opens it', async () => {
+    const ctx = new Context()
+    const api = new FakeApiClient()
+    const sessions = new SessionRuntime(ctx, api, fakeRemote())
+    const workspaces = new WorkspaceRuntime(ctx, api, sessions)
+    api.onWorkspaceList = () => Promise.resolve(ok({
+      items: [
+        workspace('current-home', [sid('current')]),
+        workspace('recent-home', [sid('recent')]),
+      ] as never[],
+    }))
+    api.onList = () => Promise.resolve(ok({ items: [
+      { sessionId: sid('current'), updatedAt: 1, running: false, blank: false },
+      { sessionId: sid('recent'), updatedAt: 2, running: false, blank: false },
+    ] as never[] }))
+    api.onCreate = () => Promise.resolve(ok({ sessionId: sid('ungrouped-new') }))
+    await Promise.all([workspaces.refresh(), sessions.refresh()])
+    await Promise.resolve()
+    sessions.open(sid('current'))
+    const open = vi.spyOn(sessions, 'open')
+
+    await workspaces.startUngroupedSession()
+
+    // No workspace is attached to the created session, and the current-session
+    // / recent Workspace fallback of startSession is bypassed entirely.
+    expect(api.callsOf('session.create')).toEqual([{}])
+    expect(open).toHaveBeenCalledWith(sid('ungrouped-new'))
+    expect(sessions.list.getSnapshot().current).toBe(sid('ungrouped-new'))
+  })
+
   it('archives a session, projects the set from the response, list, and frame, and clears only the current one', async () => {
     const ctx = new Context()
     const api = new FakeApiClient()

@@ -212,9 +212,11 @@ export function apply(ctx: Context): void {
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
       hooks: { composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId) },
       selectWorkspace: async (workspaceId) => {
-        // Ungrouped: start a New Session without a Workspace folder.
+        // Ungrouped: birth a fresh session without any Workspace folder and
+        // open it. This is distinct from the generic New Session fallback,
+        // which would resolve a current or recent Workspace instead.
         if (workspaceId === undefined) {
-          workspaces.startSession()
+          await workspaces.startUngroupedSession()
           return
         }
         const nextId = await workspaces.connectWorkspace(workspaceId)

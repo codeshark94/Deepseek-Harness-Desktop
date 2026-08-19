@@ -29,6 +29,13 @@ export interface IWorkspaces {
    */
   startSession(workspaceId?: WorkspaceId): void
   /**
+   * Start an Ungrouped New Session: create a fresh session without any
+   * Workspace folder and navigate to it. The explicit Ungrouped pick in the
+   * new-conversation workspace picker — distinct from {@link startSession},
+   * whose omitted target resolves a current or recent Workspace instead.
+   */
+  startUngroupedSession(): Promise<void>
+  /**
    * Register an existing path as a Workspace.
    * @param input - the Host create payload.
    * @returns the created or idempotently resolved Workspace.
