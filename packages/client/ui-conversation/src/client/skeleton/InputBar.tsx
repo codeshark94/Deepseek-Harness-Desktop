@@ -13,7 +13,6 @@ import {
   IconPlusOutline16, IconWarningOutline16, Toast, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AttachmentRail, DropOverlay, ImageLightbox } from '@deepseek-ai/dsh-client-ui-attachment'
-import type { AttachmentRailItem } from '@deepseek-ai/dsh-client-ui-attachment'
 // Type-only: the `plan` projection key merge (the TodoDock posture — the
 // composer reads a host-computed value; the domain owns the key).
 import type {} from '@deepseek-ai/dsh-plan-mode/client'
@@ -38,10 +37,23 @@ import css from './InputBar.module.css'
 /** Decoration product of the no-session state (no machine, empty draft). */
 const INERT_DECORATIONS: DraftDecorations = { token: null, chips: [], textRefs: [], hint: null }
 
-/** Rail thumbnail carrying its source attachment for the open/remove callbacks. */
-interface ComposerRailItem extends AttachmentRailItem {
-  attachment: ComposerAttachment
-}
+/** Rail card carrying its source for the open/remove callbacks. */
+type ComposerRailItem =
+  | {
+    kind: 'image'
+    id: string
+    previewUrl: string
+    alt: string
+    removeLabel: string
+    attachment: ComposerAttachment
+  }
+  | {
+    kind: 'file'
+    id: string
+    name: string
+    removeLabel: string
+    occurrenceId: number
+  }
 
 export type InputBarProps = ComposerBarProps
 
@@ -550,15 +562,39 @@ export function InputBar({
 
   const closePreview = useCallback(() => { setPreview(null) }, [])
 
-  // Rail thumbnails with their strings resolved here: the attachment atoms are
-  // zero-cordis and read no locale.
-  const railItems = useMemo<ComposerRailItem[]>(() => attachments.map(attachment => ({
-    id: attachment.id,
-    previewUrl: attachment.previewUrl,
-    alt: attachment.file.name || t('image.pending'),
-    removeLabel: t('image.remove', { name: attachment.file.name }),
-    attachment,
-  })), [attachments, t])
+  // Remove a file reference chip from the draft: deleting its single U+FFFC
+  // placeholder lets the machine's diff reconcile drop the occurrence.
+  const removeFile = (occurrenceId: number): void => {
+    if (inputActions === undefined || input === undefined) return
+    const occurrence = input.occurrences.find(o => o.occurrenceId === occurrenceId)
+    if (occurrence === undefined) return
+    const draft = input.draft
+    inputActions.setDraft(draft.slice(0, occurrence.offset) + draft.slice(occurrence.offset + 1))
+  }
+
+  // Rail cards with their strings resolved here: the attachment atoms are
+  // zero-cordis and read no locale. Image thumbnails and file chips share the
+  // rail, in draft order (images first, then files).
+  const railItems = useMemo<ComposerRailItem[]>(() => {
+    const images: ComposerRailItem[] = attachments.map(attachment => ({
+      kind: 'image',
+      id: attachment.id,
+      previewUrl: attachment.previewUrl,
+      alt: attachment.file.name || t('image.pending'),
+      removeLabel: t('image.remove', { name: attachment.file.name }),
+      attachment,
+    }))
+    const files: ComposerRailItem[] = (input?.occurrences ?? [])
+      .filter(o => o.source === 'file')
+      .map(o => ({
+        kind: 'file',
+        id: `file-${o.occurrenceId}`,
+        name: o.label,
+        removeLabel: t('file.remove', { name: o.label }),
+        occurrenceId: o.occurrenceId,
+      }))
+    return [...images, ...files]
+  }, [attachments, input?.occurrences, t])
 
   const onSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>): void => {
     // Any caret/selection gesture ends a live paste attempt (the machine
@@ -719,8 +755,11 @@ export function InputBar({
             <AttachmentRail
               items={railItems}
               labels={attachmentRailLabels(t)}
-              onOpen={(item) => { setPreview(item.attachment) }}
-              onRemove={(item) => { removeImage?.(item.attachment.id) }}
+              onOpen={(item) => { if (item.kind === 'image') setPreview(item.attachment) }}
+              onRemove={(item) => {
+                if (item.kind === 'image') removeImage?.(item.attachment.id)
+                else removeFile(item.occurrenceId)
+              }}
             />
           </div>
         )}

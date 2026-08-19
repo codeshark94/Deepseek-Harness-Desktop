@@ -108,7 +108,7 @@ export function dropOverlayLabels(
  */
 export function attachmentRailLabels(t: Translate<ConversationKey>): AttachmentRailLabels {
   return {
-    group: t('image.pending'),
+    group: t('file.pending'),
     open: t('image.openOriginal'),
     scrollLeft: t('image.scrollLeft'),
     scrollRight: t('image.scrollRight'),

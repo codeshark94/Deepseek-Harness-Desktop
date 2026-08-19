@@ -35,7 +35,11 @@ const labels: AttachmentRailLabels = {
 }
 
 function item(id: string): AttachmentRailItem {
-  return { id, previewUrl: `blob:${id}`, alt: `${id}.png`, removeLabel: `移除图片 ${id}.png` }
+  return { kind: 'image', id, previewUrl: `blob:${id}`, alt: `${id}.png`, removeLabel: `移除图片 ${id}.png` }
+}
+
+function fileItem(id: string): AttachmentRailItem {
+  return { kind: 'file', id, name: `${id}.txt`, removeLabel: `移除文件 ${id}.txt` }
 }
 
 /** Stub the rail's scroll geometry (jsdom reports 0 for every metric). */
@@ -67,6 +71,20 @@ describe('AttachmentRail', () => {
     expect(onOpen).toHaveBeenCalledWith(items[0])
     fireEvent.click(view.getByRole('button', { name: '移除图片 b.png' }))
     expect(onRemove).toHaveBeenCalledWith(items[1])
+  })
+
+  it('renders file cards with their names and routes remove clicks without an open control', () => {
+    const onOpen = vi.fn()
+    const onRemove = vi.fn()
+    const items = [fileItem('a'), fileItem('b')]
+    const view = render(<AttachmentRail items={items} labels={labels} onOpen={onOpen} onRemove={onRemove} />)
+    const rail = view.getByRole('group', { name: '待发送图片' })
+    expect([...rail.querySelectorAll('[class*="fileName"]')].map(el => el.textContent)).toEqual(['a.txt', 'b.txt'])
+    // File cards have no open affordance: only the remove control is a button.
+    expect(view.queryByTitle('查看原图')).toBeNull()
+    fireEvent.click(view.getByRole('button', { name: '移除文件 b.txt' }))
+    expect(onRemove).toHaveBeenCalledWith(items[1])
+    expect(onOpen).not.toHaveBeenCalled()
   })
 
   it('shows edge arrows from scroll geometry and pages a viewport at a time', () => {

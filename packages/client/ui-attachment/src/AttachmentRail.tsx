@@ -4,21 +4,34 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
-  IconChevronLeftOutline14, IconChevronRightOutline14, IconCloseFill14,
+  IconChevronLeftOutline14, IconChevronRightOutline14, IconCloseFill14, IconPaperclipOutline16,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import css from './AttachmentRail.module.css'
 
-/** One rail thumbnail; strings arrive resolved (zero-cordis atom). */
-export interface AttachmentRailItem {
-  /** Stable identity for the React key. */
-  id: string
-  /** Object or data URL rendered as the thumbnail. */
-  previewUrl: string
-  /** Image alt text (display name with the owner's fallback applied). */
-  alt: string
-  /** Accessible label of the item's remove control. */
-  removeLabel: string
-}
+/** One rail card; strings arrive resolved (zero-cordis atom). */
+export type AttachmentRailItem =
+  | {
+    /** Image thumbnail card (single-click opens the original). */
+    readonly kind: 'image'
+    /** Stable identity for the React key. */
+    readonly id: string
+    /** Object or data URL rendered as the thumbnail. */
+    readonly previewUrl: string
+    /** Image alt text (display name with the owner's fallback applied). */
+    readonly alt: string
+    /** Accessible label of the item's remove control. */
+    readonly removeLabel: string
+  }
+  | {
+    /** File card (paperclip + name; no open preview). */
+    readonly kind: 'file'
+    /** Stable identity for the React key. */
+    readonly id: string
+    /** File display name. */
+    readonly name: string
+    /** Accessible label of the item's remove control. */
+    readonly removeLabel: string
+  }
 
 /** Rail-level strings the owner resolves from its own locale namespace. */
 export interface AttachmentRailLabels {
@@ -58,9 +71,10 @@ function pageBehavior(): ScrollBehavior {
  * reveals on hover or focus. The owner decides mounting; it renders the rail
  * only while items exist.
  *
- * @param props.items - resolved thumbnails in draft order.
+ * @param props.items - resolved cards in draft order (image thumbnails and
+ *   file cards share the rail).
  * @param props.labels - rail-level strings (group name, open tooltip, arrows).
- * @param props.onOpen - single-click open of one item's original image.
+ * @param props.onOpen - single-click open of one image item's original.
  * @param props.onRemove - remove one item from the draft.
  * @returns the rail group with its paging arrows.
  */
@@ -165,15 +179,24 @@ export function AttachmentRail<T extends AttachmentRailItem>({ items, labels, on
         onScroll={updateEdges}
       >
         {items.map(item => (
-          <div key={item.id} className={css.item}>
-            <button
-              type="button"
-              className={css.thumbnail}
-              title={labels.open}
-              onClick={() => { onOpen(item) }}
-            >
-              <img src={item.previewUrl} alt={item.alt} />
-            </button>
+          <div key={item.id} className={clsx(css.item, item.kind === 'file' && css.itemFile)}>
+            {item.kind === 'image' ? (
+              <button
+                type="button"
+                className={css.thumbnail}
+                title={labels.open}
+                onClick={() => { onOpen(item) }}
+              >
+                <img src={item.previewUrl} alt={item.alt} />
+              </button>
+            ) : (
+              <div className={css.fileCard} title={item.name}>
+                <span className={css.fileIcon} aria-hidden>
+                  <IconPaperclipOutline16 />
+                </span>
+                <span className={css.fileName}>{item.name}</span>
+              </div>
+            )}
             <button
               type="button"
               className={css.remove}

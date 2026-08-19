@@ -1212,6 +1212,22 @@ describe('decorations', () => {
     expect(shell.snapshot.draft).not.toContain('binary-data')
     // The submit projection is a reference to the uploaded path, never the content.
     expect(occurrence.clipboardText).toBe('[첨부: report.pdf] (/fixture/x.txt)')
+    // The file also renders as a card in the attachments rail, with a remove control.
+    expect(view.getByRole('button', { name: '移除文件 report.pdf' })).toBeTruthy()
+  })
+
+  it('removing a file card drops its chip and occurrence from the draft', async () => {
+    const { view, shell } = bench()
+    const input = view.container.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(['binary-data'], 'report.pdf', { type: 'application/pdf' })
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+    act(() => { fireEvent.change(input) })
+    await act(async () => { await Promise.resolve() })
+    expect(shell.snapshot.occurrences).toHaveLength(1)
+    act(() => { fireEvent.click(view.getByRole('button', { name: '移除文件 report.pdf' })) })
+    expect(shell.snapshot.occurrences).toEqual([])
+    expect(shell.snapshot.draft).not.toContain('\uFFFC')
+    expect(view.queryByRole('button', { name: '移除文件 report.pdf' })).toBeNull()
   })
 
   it('a lexicon-matched plain token renders the text-ref mark', () => {
