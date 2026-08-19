@@ -212,6 +212,11 @@ export function apply(ctx: Context): void {
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
       hooks: { composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId) },
       selectWorkspace: async (workspaceId) => {
+        // Ungrouped: start a New Session without a Workspace folder.
+        if (workspaceId === undefined) {
+          workspaces.startSession()
+          return
+        }
         const nextId = await workspaces.connectWorkspace(workspaceId)
         if (sessionId !== undefined && nextId !== sessionId) {
           const from = inputHub.shell(sessionId)

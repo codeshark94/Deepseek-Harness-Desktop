@@ -39,6 +39,7 @@ import {
   ReasoningEffortId,
 } from '@deepseek-ai/dsh-llm'
 import type {
+  ContentBlock,
   GenerateOptions,
   LlmModelInfo,
   LlmProviderInfo,
@@ -184,6 +185,30 @@ function requestHeaders(headers: Readonly<Record<string, string>> | undefined): 
 }
 
 /**
+ * Return a copy of the request with image blocks removed. Used when the
+ * selected model cannot process images: instead of failing the request, the
+ * image is simply not sent (text and tool blocks are preserved).
+ */
+function stripImages(options: GenerateOptions): GenerateOptions {
+  const strip = (blocks: readonly ContentBlock[]): ContentBlock[] => {
+    const out: ContentBlock[] = []
+    for (const block of blocks) {
+      if (block.type === 'image') continue
+      if (block.type === 'tool-result') {
+        out.push({ ...block, content: strip(block.content) })
+        continue
+      }
+      out.push(block)
+    }
+    return out
+  }
+  return {
+    ...options,
+    messages: options.messages.map(message => ({ ...message, content: strip(message.content) })),
+  }
+}
+
+/**
  * pi-ai-backed multi-provider adapter. Each operation reads the current
  * profiles, so a configuration change reaches the next request without a
  * restart; model descriptors come from the collection those profiles built.
@@ -305,19 +330,21 @@ export class PiAiAdapter extends LlmAdapter {
 
     try {
       const containsImage = options.messages.some(message => contentHasImage(message.content))
-      if (containsImage && !model.input.includes('image')) {
-        throw new LlmError(`pi-ai model "${model.id}" does not support image input`, 'UNSUPPORTED_CONTENT')
-      }
-      const attachments = containsImage ? this.config.resolveAttachments?.() : undefined
-      if (containsImage && attachments === undefined) {
+      const supportsImage = model.input.includes('image')
+      // If the selected model cannot process images, drop the image blocks
+      // instead of failing the request (text/tool content is preserved).
+      const requestOptions = containsImage && !supportsImage ? stripImages(options) : options
+      const requestHasImage = requestOptions.messages.some(message => contentHasImage(message.content))
+      const attachments = requestHasImage ? this.config.resolveAttachments?.() : undefined
+      if (requestHasImage && attachments === undefined) {
         throw new LlmError('pi-ai image input requires the durable attachment service', 'UNSUPPORTED_CONTENT')
       }
       const onReplayDegrade = (reason: string): void => {
         this.config.onReplayDegrade?.({ provider: options.provider, model: options.model, reason })
       }
       const context = attachments === undefined
-        ? toPiContext(options, undefined, onReplayDegrade)
-        : await toPiContext(options, attachments, onReplayDegrade)
+        ? toPiContext(requestOptions, undefined, onReplayDegrade)
+        : await toPiContext(requestOptions, attachments, onReplayDegrade)
       const events = snapshot.models.streamSimple(model, context, {
         ...profileOptions(profile, reasoning, apiKey),
         ...options.temperature === undefined ? {} : { temperature: options.temperature },

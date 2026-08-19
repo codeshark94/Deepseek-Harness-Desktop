@@ -21,6 +21,7 @@ import type { DirectoryFlowOwnerProps, WorkspacePickerProps } from './contract/s
 import css from './WorkspacePicker.module.css'
 
 const ADD_WORKSPACE = '::add-workspace'
+const UNGROUPED = '::ungrouped'
 
 /** Core flow props: the owner supplies popover control and pick semantics. */
 export interface WorkspacePickFlowProps {
@@ -38,8 +39,8 @@ export interface WorkspacePickFlowProps {
   useDirectoryFlow: SnapshotSelectorHook<boolean>
   /** Render this surface's directory-flow hole with the owner conversation (the entry's narrowed renderSlot). */
   renderDirectoryFlow: (owner: DirectoryFlowOwnerProps) => ReactNode
-  /** A real Workspace was picked or created. */
-  onPick: (workspaceId: WorkspaceId) => void
+  /** A real Workspace was picked or created. `undefined` means Ungrouped. */
+  onPick: (workspaceId?: WorkspaceId) => void
   /** Close the popover (outside click / Escape / post-pick). */
   onClose: () => void
   /** Only offer the add action, hide existing workspaces. */
@@ -99,7 +100,10 @@ export function WorkspacePickFlow({
     if (flowOpen && !flowAvailable) setFlowOpen(false)
   }, [flowOpen, flowAvailable])
   const addEntries: MenuEntry[] = flowAvailable
-    ? [{ id: ADD_WORKSPACE, label: t('menu.addWorkspace'), icon: <IconPlusOutline16 size={16} />, disabled: flowBusy }]
+    ? [
+      { id: ADD_WORKSPACE, label: t('menu.addWorkspace'), icon: <IconPlusOutline16 size={16} />, disabled: flowBusy },
+      { id: UNGROUPED, label: t('menu.ungrouped'), disabled: flowBusy },
+    ]
     : []
   // With workspaces listed, the add action pins below the scroll region
   // (divider + always visible); otherwise it IS the menu.
@@ -175,6 +179,10 @@ export function WorkspacePickFlow({
   const handleSelect = (id: string): void => {
     if (id === ADD_WORKSPACE) {
       openDirectoryFlow()
+      return
+    }
+    if (id === UNGROUPED) {
+      onPick(undefined)
       return
     }
     onPick(id as WorkspaceId)
