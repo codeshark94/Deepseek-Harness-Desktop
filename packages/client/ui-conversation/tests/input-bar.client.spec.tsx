@@ -1202,10 +1202,13 @@ describe('decorations', () => {
     const chip = view.container.querySelector('[data-decoration="chip"]')
     expect(chip?.textContent).toBe('report.pdf')
     expect(shell.snapshot.occurrences).toHaveLength(1)
-    expect(shell.snapshot.occurrences[0].label).toBe('report.pdf')
+    const occurrence = shell.snapshot.occurrences[0]!
+    expect(occurrence.label).toBe('report.pdf')
     // The draft holds a placeholder, not the file content.
     expect(shell.snapshot.draft).toContain('\uFFFC')
     expect(shell.snapshot.draft).not.toContain('binary-data')
+    // The submit projection is a reference to the file, never its content.
+    expect(occurrence.clipboardText).toBe('[첨부: report.pdf]')
   })
 
   it('a lexicon-matched plain token renders the text-ref mark', () => {
