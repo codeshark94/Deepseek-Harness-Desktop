@@ -179,8 +179,8 @@ export function AttachmentRail<T extends AttachmentRailItem>({ items, labels, on
         onScroll={updateEdges}
       >
         {items.map(item => (
-          <div key={item.id} className={clsx(css.item, item.kind === 'file' && css.itemFile)}>
-            {item.kind === 'image' ? (
+          item.kind === 'image' ? (
+            <div key={item.id} className={css.item}>
               <button
                 type="button"
                 className={css.thumbnail}
@@ -189,23 +189,33 @@ export function AttachmentRail<T extends AttachmentRailItem>({ items, labels, on
               >
                 <img src={item.previewUrl} alt={item.alt} />
               </button>
-            ) : (
+              <button
+                type="button"
+                className={css.remove}
+                aria-label={item.removeLabel}
+                onClick={() => { onRemove(item) }}
+              >
+                <IconCloseFill14 size={12} />
+              </button>
+            </div>
+          ) : (
+            <div key={item.id} className={clsx(css.item, css.itemFile)}>
               <div className={css.fileCard} title={item.name}>
                 <span className={css.fileIcon} aria-hidden>
                   <IconPaperclipOutline16 />
                 </span>
                 <span className={css.fileName}>{item.name}</span>
+                <button
+                  type="button"
+                  className={css.fileRemove}
+                  aria-label={item.removeLabel}
+                  onClick={() => { onRemove(item) }}
+                >
+                  <IconCloseFill14 size={12} />
+                </button>
               </div>
-            )}
-            <button
-              type="button"
-              className={css.remove}
-              aria-label={item.removeLabel}
-              onClick={() => { onRemove(item) }}
-            >
-              <IconCloseFill14 size={12} />
-            </button>
-          </div>
+            </div>
+          )
         ))}
       </div>
       {edges.right && (
