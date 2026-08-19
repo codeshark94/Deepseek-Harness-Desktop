@@ -1,57 +1,71 @@
-# DeepSeek Harness
+# Deepseek Harness Desktop
 
-English | [中文](README.zh.md)
+DeepSeek Harness를 **macOS 데스크톱 앱**으로 포장한 개인 포크입니다.
+Electron으로 감싸서, 더블클릭 한 번으로 DeepSeek Harness를 **Ollama Cloud**와 함께 바로 쓸 수 있게 만들었습니다.
 
-DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
+## ✨ 특징
 
-It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
+- **데스크톱 앱** — Finder에서 더블클릭하면 실행되는 `.app`
+- **Ollama Cloud 지원** — 로컬 Ollama 게이트웨이를 통해 cloud 모델 사용
+- **웹서치 동작** — Ollama 경유로 DeepSeek Harness 웹서치 사용 가능
+- **reasoning effort 모델별 표시** — 지원하는 모델에만 reasoning effort 노출
+- **API 키 입력 없음** — Ollama는 로컬 인증이라 DeepSeek 키 입력 안 뜸
+- **Ungrouped 선택 가능** — 새 대화 시작 시 폴더 없이 시작 가능
+- **창 닫아도 안 꺼짐** — X 눌러도 도크에 남고, 도크 클릭으로 다시 열림
 
-## Developer preview
+## 🚀 실행
 
-DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
-
-## Run
-
-### Run from `npm`
-
-Install `Node.js`, then run:
-
-```sh
-npx @deepseek-ai/dsh web
+```bash
+open "/Users/seungyeop/workspace/dist-desktop/DeepSeek Harness-darwin-arm64/DeepSeek Harness.app"
 ```
 
-The command starts the Web UI, served at `http://127.0.0.1:3080` by default. See [Web UI guide](docs/user/guide/index.md).
+또는 Finder에서 `DeepSeek Harness.app` 더블클릭.
 
-### Run from source
+## 🔧 설정
 
-To run from a repository checkout:
+### Ollama sampling (선택)
 
-```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
-cd deepseek-harness
+앱 실행 시 환경변수로 temperature / top_p / reasoning effort를 지정할 수 있습니다.
+
+```bash
+DSH_OLLAMA_TEMPERATURE=0.7 \
+DSH_OLLAMA_TOP_P=0.9 \
+DSH_OLLAMA_REASONING_EFFORT=high \
+open ".../DeepSeek Harness.app"
+```
+
+값을 안 주면 dsh가 보내는 값 그대로 통과합니다.
+
+### 설정 파일
+
+- `~/.ollama/launch/dsh/desktop-settings.yaml` — 모델/프로바이더/reasoning 설정
+- `~/.ollama/launch/dsh/llm-proxy-configurable.mjs` — temperature/top_p/effort 주입 프록시
+- `~/.ollama/launch/dsh/desktop-ollama.cordis.yml` — dsh 패치
+
+## 🛠 개발
+
+```bash
+git clone https://github.com/codeshark94/Deepseek-Harness-Desktop.git
+cd Deepseek-Harness-Desktop
 pnpm install
 pnpm run build
 pnpm dsh web
 ```
 
-## Community and support
+데스크톱 래퍼 소스는 `apps/desktop/`에 있습니다.
 
-- Feel free to submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
-- Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
-- Join <a href="https://discord.gg/Ycq5dCaS4">DeepSeek Harness Discord community</a>.
+## 📦 패키징
 
-## Contributing
+```bash
+cd apps/desktop
+pnpm install
+pnpm run pack
+```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+결과물은 `dist-desktop/DeepSeek Harness-darwin-arm64/DeepSeek Harness.app` 입니다.
 
-## Development
-
-Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
-
-For agents, follow [AGENTS.md](AGENTS.md).
-
-## License
+## 📄 라이선스
 
 [MIT](LICENSE)
 
-Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+원본 프로젝트: [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)
