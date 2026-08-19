@@ -22,6 +22,7 @@ const OLLAMA_REASONING_EFFORT = process.env.DSH_OLLAMA_REASONING_EFFORT
 let serverProcess = null
 let proxyProcess = null
 let mainWindow = null
+let serverUrl = null
 let quitting = false
 
 // In a packaged Electron app, process.execPath is the Electron binary, NOT
@@ -138,6 +139,9 @@ function startProxy() {
 }
 
 async function startDsh() {
+  // Reuse an already-running server when the window is reopened.
+  if (serverUrl) return serverUrl
+
   // Start the configurable Ollama proxy first, then the dsh web server.
   await startProxy()
 
@@ -187,6 +191,7 @@ async function startDsh() {
       if (m && !settled) {
         settled = true
         clearTimeout(timer)
+        serverUrl = m[1]
         resolve(m[1])
       }
     }
@@ -240,8 +245,8 @@ async function createWindow() {
   })
   mainWindow.loadURL(url)
   mainWindow.on('closed', () => {
+    // Keep the app and dsh server running; reopen from the Dock.
     mainWindow = null
-    app.quit()
   })
 }
 
@@ -260,14 +265,24 @@ if (!gotLock) {
   app.whenReady().then(createWindow)
 
   app.on('window-all-closed', () => {
-    quitting = true
-    if (serverProcess) {
-      try { serverProcess.kill('SIGTERM') } catch {}
+    // On macOS keep the app (and dsh server) alive in the Dock.
+    if (process.platform !== 'darwin') {
+      quitting = true
+      if (serverProcess) {
+        try { serverProcess.kill('SIGTERM') } catch {}
+      }
+      if (proxyProcess) {
+        try { proxyProcess.kill('SIGTERM') } catch {}
+      }
+      app.quit()
     }
-    if (proxyProcess) {
-      try { proxyProcess.kill('SIGTERM') } catch {}
+  })
+
+  // Reopen a window when the Dock icon is clicked.
+  app.on('activate', () => {
+    if (mainWindow === null) {
+      void createWindow()
     }
-    app.quit()
   })
 
   app.on('before-quit', () => {
