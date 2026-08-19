@@ -100,21 +100,21 @@ export function WorkspacePickFlow({
     if (flowOpen && !flowAvailable) setFlowOpen(false)
   }, [flowOpen, flowAvailable])
   const addEntries: MenuEntry[] = flowAvailable
-    ? [{ id: ADD_WORKSPACE, label: t('menu.addWorkspace'), icon: <IconPlusOutline16 size={16} />, disabled: flowBusy }]
+    ? [
+      { id: ADD_WORKSPACE, label: t('menu.addWorkspace'), icon: <IconPlusOutline16 size={16} />, disabled: flowBusy },
+      { id: UNGROUPED, label: t('menu.ungrouped'), disabled: flowBusy },
+    ]
     : []
   // With workspaces listed, the add action pins below the scroll region
   // (divider + always visible); otherwise it IS the menu.
   const pinAdd = !addOnly && workspaces.length > 0
   const items: MenuEntry[] = pinAdd
-    ? [
-      { id: UNGROUPED, label: t('menu.ungrouped'), icon: <IconFolderClose16 size={16} />, disabled: flowBusy },
-      ...workspaces.map(workspace => ({
-        id: workspace.workspaceId,
-        label: workspace.title,
-        icon: <IconFolderClose16 size={16} />,
-        disabled: flowBusy,
-      })),
-    ]
+    ? workspaces.map(workspace => ({
+      id: workspace.workspaceId,
+      label: workspace.title,
+      icon: <IconFolderClose16 size={16} />,
+      disabled: flowBusy,
+    }))
     : addEntries
   // Nothing listed and nothing to add with (a composition that mounts this
   // package without any directory-picker): an empty popover would claim a
