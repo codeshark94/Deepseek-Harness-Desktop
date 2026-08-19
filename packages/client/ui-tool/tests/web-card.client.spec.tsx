@@ -231,6 +231,7 @@ describe('DetailsPanel web Output section', () => {
         inputActions={{
           setDraft: () => {},
           insertReference: () => true,
+          uploadFile: () => Promise.resolve({ ok: true, value: { path: '/fixture/.dsh/attachments/x.txt' } }),
           addImages: () => true,
           removeImage: () => {},
           pruneImages: () => {},

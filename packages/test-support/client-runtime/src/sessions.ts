@@ -185,7 +185,7 @@ export class TestSessions implements ISessions {
   /** Calls observed on the service-level face, newest last. */
   readonly calls: {
     method: 'open' | 'openSubagent' | 'setSubagentCatalogOpen' | 'refreshSubagents'
-      | 'clear' | 'search' | 'fork'
+      | 'clear' | 'search' | 'fork' | 'uploadFile'
     args: unknown[]
   }[] = []
 
@@ -476,6 +476,18 @@ export class TestSessions implements ISessions {
   search(query: string, signal: AbortSignal): ReturnType<ISessions['search']> {
     this.calls.push({ method: 'search', args: [query, signal] })
     return Promise.resolve({ ok: true, value: this.searchStub?.(query, signal) ?? { items: [], hasMore: false } })
+  }
+
+  /**
+   * Recorded upload stub: no file is written (this face only proves the call).
+   * @param sessionId - the target session.
+   * @param filename - the original file name.
+   * @param content - the file content.
+   * @returns a synthetic uploaded path.
+   */
+  uploadFile(sessionId: SessionId, filename: string, content: string): ReturnType<ISessions['uploadFile']> {
+    this.calls.push({ method: 'uploadFile', args: [sessionId, filename, content] })
+    return Promise.resolve({ ok: true, value: { path: `/fixture/.dsh/attachments/${filename}` } })
   }
 
   /**

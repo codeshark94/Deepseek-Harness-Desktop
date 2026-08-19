@@ -4,8 +4,8 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { mkdir, stat } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { mkdir, stat, writeFile } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, ModelSelection, ModelSelectionRef, AgentOptions, AgentStatus } from '@deepseek-ai/dsh-agent'
@@ -2500,6 +2500,49 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           return err(request, {
             code: 'internal',
             message: 'Unable to read image attachment.',
+            details: {},
+          })
+        }
+      },
+
+      async uploadFile(request) {
+        const { sessionId, filename, content } = request.payload
+        let state: SessionReadState
+        try {
+          state = await readSessionState(sessionId)
+        } catch (error: unknown) {
+          if (error instanceof SessionNotFound) {
+            return err(request, {
+              code: 'session-not-found',
+              message: error.message,
+              details: { sessionId },
+            })
+          }
+          return err(request, {
+            code: 'internal',
+            message: `upload authorization unavailable for session "${sessionId}": ${String(error)}`,
+            details: {},
+          })
+        }
+        const cwd = state.header.cwd
+        if (cwd === undefined) {
+          return err(request, {
+            code: 'internal',
+            message: 'session has no project directory to upload into',
+            details: {},
+          })
+        }
+        const safeName = basename(filename).replace(/[^\w.\- ]/g, '_')
+        const dir = join(cwd, '.dsh', 'attachments')
+        const target = join(dir, safeName)
+        try {
+          await mkdir(dir, { recursive: true })
+          await writeFile(target, content, 'utf8')
+          return ok(request, { path: target })
+        } catch (error: unknown) {
+          return err(request, {
+            code: 'internal',
+            message: `failed to write uploaded file: ${String(error)}`,
             details: {},
           })
         }

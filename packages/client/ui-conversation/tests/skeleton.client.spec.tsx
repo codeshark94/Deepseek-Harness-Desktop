@@ -32,7 +32,7 @@ import type { ViewTab } from '../src/client/contract/views.ts'
 /** Machine-backed wiring over a sink spy. */
 function fakeWiring() {
   const sink = vi.fn()
-  const shell = new SessionInputShell({ actx: {} as ClientContext, defaultSink: sink })
+  const shell = new SessionInputShell({ actx: {} as ClientContext, sessionId: sid('s-test'), defaultSink: sink, uploadFile: () => Promise.resolve({ ok: true, value: { path: '/fixture/x.txt' } }) })
   return { wiring: shell, sink, shell }
 }
 

@@ -72,11 +72,13 @@ export class InputHub implements SessionInputResolver {
     const { sessionId: id, session, ctx: actx } = binding
     const shell = new SessionInputShell({
       actx,
+      sessionId: id,
       inputTriggers: () => this.controller(actx),
       popup: () => this.popup(actx),
       queue: queueReadFaceOf(session),
       defaultSink: (text, imageIds, mode) => { this.sink(session, text, imageIds, mode) },
       steerQueue: () => { void this.steerQueue(session, shell) },
+      uploadFile: (sessionId, filename, content) => this.sessions().uploadFile(sessionId, filename, content),
     })
     this.shells.set(id, shell)
     // The one teardown axis: listeners, shell, and map entries all ride the

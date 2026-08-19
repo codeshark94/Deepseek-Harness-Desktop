@@ -113,7 +113,9 @@ function bench(over?: BenchOptions) {
   type ShellDeps = ConstructorParameters<typeof SessionInputShell>[0]
   const shell = new SessionInputShell({
     actx: SCTX,
+    sessionId: SID,
     defaultSink: sink,
+    uploadFile: () => Promise.resolve({ ok: true, value: { path: '/fixture/x.txt' } }),
     queue: {
       getSnapshot: () => session.getSnapshot().queue,
       subscribe: fn => session.subscribe(fn),
@@ -1193,12 +1195,13 @@ describe('decorations', () => {
     expect(shell.snapshot.draft).toBe('参考 \uFFFC 内容')
   })
 
-  it('attaching a file inserts a chip with the filename, not the raw content', () => {
+  it('attaching a file uploads it and inserts a chip with the filename, not the raw content', async () => {
     const { view, shell } = bench()
     const input = view.container.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File(['binary-data'], 'report.pdf', { type: 'application/pdf' })
     Object.defineProperty(input, 'files', { value: [file], configurable: true })
     act(() => { fireEvent.change(input) })
+    await act(async () => { await Promise.resolve() })
     const chip = view.container.querySelector('[data-decoration="chip"]')
     expect(chip?.textContent).toBe('report.pdf')
     expect(shell.snapshot.occurrences).toHaveLength(1)
@@ -1207,8 +1210,8 @@ describe('decorations', () => {
     // The draft holds a placeholder, not the file content.
     expect(shell.snapshot.draft).toContain('\uFFFC')
     expect(shell.snapshot.draft).not.toContain('binary-data')
-    // The submit projection is a reference to the file, never its content.
-    expect(occurrence.clipboardText).toBe('[첨부: report.pdf]')
+    // The submit projection is a reference to the uploaded path, never the content.
+    expect(occurrence.clipboardText).toBe('[첨부: report.pdf] (/fixture/x.txt)')
   })
 
   it('a lexicon-matched plain token renders the text-ref mark', () => {

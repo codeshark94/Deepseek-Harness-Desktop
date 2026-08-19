@@ -357,6 +357,15 @@ export interface SessionsApi {
   Promise<RpcResponse<{ attachment: ImageAttachmentRef; data: string }>>
 
   /**
+   * Uploads a file into the session's workspace so the model can read it with
+   * tool-fs. The content is written under `.dsh/attachments/` in the session's
+   * cwd; the returned path is what the model should read. The filename is
+   * sanitized to a safe basename.
+   */
+  uploadFile(request: RpcRequest<{ sessionId: SessionId; filename: string; content: string }>):
+  Promise<RpcResponse<{ path: string }>>
+
+  /**
    * Edits, removes, or strictly steers one pending queued occurrence on an ordinary session.
    * Session-backed subagents reject with `agent-busy`.
    */

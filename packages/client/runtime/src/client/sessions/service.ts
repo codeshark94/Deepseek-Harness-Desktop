@@ -277,7 +277,7 @@ export class SessionRuntime implements ISessions {
    */
   constructor(
     private readonly rootCtx: Context,
-    api: IApiClient,
+    private readonly api: IApiClient,
     remote: SessionRemotes,
     conversationRuntime?: ConversationRuntime,
   ) {
@@ -443,6 +443,20 @@ export class SessionRuntime implements ISessions {
     signal: AbortSignal,
   ): Promise<RpcResult<{ items: SessionSearchResultItem[]; hasMore: boolean }>> {
     return this.manager.search(query, signal)
+  }
+
+  /**
+   * Upload a file into a session's workspace so the model can read it with
+   * tool-fs. The host writes the content under `.dsh/attachments/` in the
+   * session's cwd and returns the path the model should read.
+   * @param sessionId - the target session.
+   * @param filename - the original file name (sanitized host-side).
+   * @param content - the file content as text.
+   * @returns the uploaded file's absolute path.
+   */
+  async uploadFile(sessionId: SessionId, filename: string, content: string): Promise<RpcResult<{ path: string }>> {
+    const { result } = await this.api.sessions.uploadFile({ sessionId, filename, content })
+    return result
   }
 
   /**

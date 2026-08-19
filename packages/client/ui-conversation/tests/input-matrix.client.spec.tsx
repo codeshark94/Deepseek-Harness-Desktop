@@ -70,7 +70,7 @@ function mountBar(shell: SessionInputShell, over?: { running?: boolean; disabled
 
 function bench(over?: { running?: boolean; disabled?: boolean; submit?: (args: string) => Promise<SubmitOutcome> }) {
   const sink = vi.fn()
-  const shell = new SessionInputShell({ actx: SCTX, defaultSink: sink })
+  const shell = new SessionInputShell({ actx: SCTX, sessionId: SID, defaultSink: sink, uploadFile: () => Promise.resolve({ ok: true, value: { path: '/fixture/x.txt' } }) })
   const wiring = shell
   const view = mountBar(shell, over)
   const textarea = view.container.querySelector('textarea')!

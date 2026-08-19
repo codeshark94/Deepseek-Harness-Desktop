@@ -8,6 +8,8 @@
  */
 import type { ClientContext, ObservableSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { RpcResult } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   ArbitrateKey, ArbitrateOutcome, CommandClaim, ConsumeTokenRequest, PickOutcome,
   ReferenceInsert, InputTriggerController, TokenSpan,
@@ -33,6 +35,8 @@ export interface PopupDismissFace {
 export interface SessionInputDeps {
   /** Session-scope ctx handed to claim.submit transactions. */
   actx: ClientContext
+  /** The session this input shell belongs to. */
+  sessionId: SessionId
   /** Enter adjudication face resolver; absent/undefined answer = every '/' line falls to the default sink. */
   inputTriggers?: (() => InputTriggerController | undefined) | undefined
   /** PopupSelect shell face resolver (dismissal on submit lock / escape). */
@@ -46,6 +50,11 @@ export interface SessionInputDeps {
   steerQueue?: (() => void) | undefined
   /** The plain-message sink (send choreography / materialize fork — the hub owns it). */
   defaultSink(text: string, imageIds: readonly DraftAttachmentId[], mode: InputSubmitMode): void
+  /**
+   * Upload a file into the session's workspace so the model can read it with
+   * tool-fs. Returns the uploaded file's absolute path.
+   */
+  uploadFile(sessionId: SessionId, filename: string, content: string): Promise<RpcResult<{ path: string }>>
 }
 
 /** Guard tier from the machine phase. */
@@ -75,6 +84,7 @@ export class SessionInputShell implements SessionInput {
   readonly actions: InputActions = {
     setDraft: (text) => { this.setDraft(text) },
     insertReference: (ref, span) => this.insertReference(ref, span),
+    uploadFile: (filename, content) => this.deps.uploadFile(this.deps.sessionId, filename, content),
     addImages: ids => this.addImages(ids),
     removeImage: (id) => { this.removeImage(id) },
     pruneImages: (ids) => { this.pruneImages(ids) },

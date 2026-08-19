@@ -85,6 +85,16 @@ export interface ISessions {
     signal: AbortSignal,
   ): Promise<RpcResult<{ items: SessionSearchResultItem[]; hasMore: boolean }>>
   /**
+   * Upload a file into a session's workspace so the model can read it with
+   * tool-fs. The host writes the content under `.dsh/attachments/` in the
+   * session's cwd and returns the path the model should read.
+   * @param sessionId - the target session.
+   * @param filename - the original file name (sanitized host-side).
+   * @param content - the file content as text.
+   * @returns the uploaded file's absolute path.
+   */
+  uploadFile(sessionId: SessionId, filename: string, content: string): Promise<RpcResult<{ path: string }>>
+  /**
    * Fork a session from a completed-turn prefix of the source; on resolution
    * the child is in the list store and `open()` can target it.
    * @param opts - source session id, the optional event seq anchoring the

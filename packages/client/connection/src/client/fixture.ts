@@ -2481,8 +2481,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         }
         if (!logReferencesAttachment(
           logs.get(request.payload.sessionId) ?? [],
-          String(request.payload.attachmentId),
-        )) {
+          String(request.payload.attachmentId)        )) {
           return err(request, {
             code: 'attachment-error',
             message: 'fixture attachment is not referenced by this session',
@@ -2491,6 +2490,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         }
         return ok(request, stored)
       },
+      uploadFile: request => ok(request, {
+        path: `/fixture/.dsh/attachments/${request.payload.filename}`,
+      }),
       updateQueue: request => err(request, {
         code: 'queue-item-not-found',
         message: 'fixture has no pending queue item',
@@ -3087,6 +3089,7 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'session.fork': return this.api.sessions.fork(request)
       case 'session.prompt': return this.api.sessions.prompt(request)
       case 'session.attachment': return this.api.sessions.attachment(request)
+      case 'session.uploadFile': return this.api.sessions.uploadFile(request)
       case 'session.updateQueue': return this.api.sessions.updateQueue(request)
       case 'session.cancel': return this.api.sessions.cancel(request)
       case 'subagent.list': return this.api.subagents.list(request)

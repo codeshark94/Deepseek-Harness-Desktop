@@ -136,10 +136,16 @@ export function InputBar({
     const { start, end } = selectionOf(el)
     const span: TokenSpan = { start, end, draftRev: input?.draftRev ?? 0 }
     const label = file.name
-    inputActions.insertReference(
-      { source: 'file', ref: file.name, label, clipboardText: `[첨부: ${file.name}]` },
-      span,
-    )
+    // Upload the file into the session's workspace so the model can read it
+    // with tool-fs regardless of where it lives on disk. The chip carries the
+    // uploaded path, never the raw content.
+    void file.text().then(content => inputActions.uploadFile(file.name, content)).then((result) => {
+      if (!result.ok) return
+      inputActions.insertReference(
+        { source: 'file', ref: file.name, label, clipboardText: `[첨부: ${file.name}] (${result.value.path})` },
+        span,
+      )
+    })
   }
 
   // The Access seat's data: the host-computed permissions projection

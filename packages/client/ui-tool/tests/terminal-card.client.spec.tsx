@@ -471,7 +471,7 @@ describe('DetailsPanel Output section', () => {
         useWorkspaces={bindSnapshotSelector(workspaces)}
         useInput={(() => { throw new Error('unused') })}
         inputActions={{
-          setDraft: () => {}, insertReference: () => true, addImages: () => true,
+          setDraft: () => {}, insertReference: () => true, uploadFile: () => Promise.resolve({ ok: true, value: { path: '/fixture/x.txt' } }), addImages: () => true,
           removeImage: () => {}, pruneImages: () => {}, submit: () => {},
         }}
         useProjection={(() => undefined)}
@@ -660,7 +660,7 @@ describe('DetailsPanel Output section', () => {
         }))}
         useInput={(() => { throw new Error('unused') })}
         inputActions={{
-          setDraft: () => {}, insertReference: () => true, addImages: () => true,
+          setDraft: () => {}, insertReference: () => true, uploadFile: () => Promise.resolve({ ok: true, value: { path: '/fixture/x.txt' } }), addImages: () => true,
           removeImage: () => {}, pruneImages: () => {}, submit: () => {},
         }}
         useProjection={(() => undefined)}

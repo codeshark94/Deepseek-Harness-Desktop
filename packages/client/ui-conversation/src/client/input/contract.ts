@@ -6,6 +6,7 @@
  * (machine.ts) is package-private and never exported.
  */
 import type { ClientContext, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type { RpcResult } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type {
   ArbitrateKey, ArbitrateOutcome, CommandClaim, ConsumeTokenRequest, PickOutcome,
@@ -75,6 +76,11 @@ export interface InputActions {
   setDraft(text: string): void
   /** Replace the trigger span with one reference occurrence (span-CAS'd). */
   insertReference(ref: ReferenceInsert, span: TokenSpan): boolean
+  /**
+   * Upload a file into the session's workspace so the model can read it with
+   * tool-fs. Resolves to the uploaded file's absolute path, or an error.
+   */
+  uploadFile(filename: string, content: string): Promise<RpcResult<{ path: string }>>
   /** Append ordered browser-owned image ids; busy admission phases refuse. */
   addImages(ids: readonly DraftAttachmentId[]): boolean
   /** Remove one browser-owned image id. */
