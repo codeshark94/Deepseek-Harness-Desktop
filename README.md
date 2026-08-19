@@ -1,61 +1,57 @@
-# DeepSeek Harness Desktop
+# DeepSeek Harness
 
-A personal fork that packages [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) as a **macOS desktop app**. Wrapped in Electron, it lets you launch DeepSeek Harness with **Ollama Cloud** in a single double-click.
+English | [中文](README.zh.md)
 
-## Features
+DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
 
-- **Desktop app** — a double-clickable `.app` for macOS
-- **Ollama Cloud support** — uses cloud models through a local Ollama gateway
-- **Web search** — DeepSeek Harness web search works via Ollama
-- **Per-model reasoning effort** — the reasoning-effort control is shown only for models that support it
+It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
 
-## Usage
+## Developer preview
 
-Double-click `DeepSeek Harness.app` in Finder.
+DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
 
-## Configuration
+## Run
 
-### Ollama sampling (optional)
+### Run from `npm`
 
-You can set temperature, top_p, and reasoning effort via environment variables when launching the app:
+Install `Node.js`, then run:
 
-```bash
-DSH_OLLAMA_TEMPERATURE=0.7 \
-DSH_OLLAMA_TOP_P=0.9 \
-DSH_OLLAMA_REASONING_EFFORT=high \
-open "DeepSeek Harness.app"
+```sh
+npx @deepseek-ai/dsh web
 ```
 
-### Ollama patch / proxy (optional)
+The command starts the Web UI, served at `http://127.0.0.1:3080` by default. See [Web UI guide](docs/user/guide/index.md).
 
-An Ollama-specific dsh patch and proxy are configured with the `DSH_PATCH` and `DSH_OLLAMA_PROXY` environment variables. If they are not set, the app runs plain dsh without the Ollama patch.
+### Run from source
 
-## Build
+To run from a repository checkout:
 
-Build the `.app` from a fresh clone. Requires macOS arm64, Node.js ^22.19 || >=24, and pnpm.
-
-```bash
-git clone https://github.com/codeshark94/Deepseek-Harness-Desktop.git
-cd Deepseek-Harness-Desktop
-pnpm run build:desktop
-```
-
-The result is written to `dist-desktop/DeepSeek Harness-darwin-arm64/DeepSeek Harness.app`.
-
-> **Note** — The app runs the built dsh CLI, so it needs the repository. If you move the app outside the repo (for example to `/Applications`), set the `DSH_REPO_ROOT` environment variable to the path of a built checkout. A fully self-contained single `.app` is not supported yet.
-
-## Development
-
-```bash
+```sh
+git clone https://github.com/deepseek-ai/deepseek-harness.git
+cd deepseek-harness
 pnpm install
 pnpm run build
 pnpm dsh web
 ```
 
-The desktop wrapper source lives in `apps/desktop/`. On launch the app locates the repository root from its own location and runs the built dsh CLI.
+## Community and support
+
+- Feel free to submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
+- Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
+- Join <a href="https://discord.gg/Ycq5dCaS4">DeepSeek Harness Discord community</a>.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Development
+
+Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
+
+For agents, follow [AGENTS.md](AGENTS.md).
 
 ## License
 
 [MIT](LICENSE)
 
-Upstream project: [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)
+Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
