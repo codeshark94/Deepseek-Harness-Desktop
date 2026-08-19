@@ -21,6 +21,7 @@ import type { DirectoryFlowOwnerProps, WorkspacePickerProps } from './contract/s
 import css from './WorkspacePicker.module.css'
 
 const ADD_WORKSPACE = '::add-workspace'
+const UNGROUPED = '::ungrouped'
 
 /** Core flow props: the owner supplies popover control and pick semantics. */
 export interface WorkspacePickFlowProps {
@@ -38,8 +39,8 @@ export interface WorkspacePickFlowProps {
   useDirectoryFlow: SnapshotSelectorHook<boolean>
   /** Render this surface's directory-flow hole with the owner conversation (the entry's narrowed renderSlot). */
   renderDirectoryFlow: (owner: DirectoryFlowOwnerProps) => ReactNode
-  /** A real Workspace was picked or created. */
-  onPick: (workspaceId: WorkspaceId) => void
+  /** A real Workspace was picked or created. `undefined` means Ungrouped. */
+  onPick: (workspaceId?: WorkspaceId) => void
   /** Close the popover (outside click / Escape / post-pick). */
   onClose: () => void
   /** Only offer the add action, hide existing workspaces. */
@@ -105,12 +106,15 @@ export function WorkspacePickFlow({
   // (divider + always visible); otherwise it IS the menu.
   const pinAdd = !addOnly && workspaces.length > 0
   const items: MenuEntry[] = pinAdd
-    ? workspaces.map(workspace => ({
-      id: workspace.workspaceId,
-      label: workspace.title,
-      icon: <IconFolderClose16 size={16} />,
-      disabled: flowBusy,
-    }))
+    ? [
+      { id: UNGROUPED, label: t('menu.ungrouped'), icon: <IconFolderClose16 size={16} />, disabled: flowBusy },
+      ...workspaces.map(workspace => ({
+        id: workspace.workspaceId,
+        label: workspace.title,
+        icon: <IconFolderClose16 size={16} />,
+        disabled: flowBusy,
+      })),
+    ]
     : addEntries
   // Nothing listed and nothing to add with (a composition that mounts this
   // package without any directory-picker): an empty popover would claim a
@@ -175,6 +179,10 @@ export function WorkspacePickFlow({
   const handleSelect = (id: string): void => {
     if (id === ADD_WORKSPACE) {
       openDirectoryFlow()
+      return
+    }
+    if (id === UNGROUPED) {
+      onPick(undefined)
       return
     }
     onPick(id as WorkspaceId)
