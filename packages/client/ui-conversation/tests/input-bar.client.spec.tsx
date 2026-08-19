@@ -1193,6 +1193,21 @@ describe('decorations', () => {
     expect(shell.snapshot.draft).toBe('参考 \uFFFC 内容')
   })
 
+  it('attaching a file inserts a chip with the filename, not the raw content', () => {
+    const { view, shell } = bench()
+    const input = view.container.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(['binary-data'], 'report.pdf', { type: 'application/pdf' })
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+    act(() => { fireEvent.change(input) })
+    const chip = view.container.querySelector('[data-decoration="chip"]')
+    expect(chip?.textContent).toBe('report.pdf')
+    expect(shell.snapshot.occurrences).toHaveLength(1)
+    expect(shell.snapshot.occurrences[0].label).toBe('report.pdf')
+    // The draft holds a placeholder, not the file content.
+    expect(shell.snapshot.draft).toContain('\uFFFC')
+    expect(shell.snapshot.draft).not.toContain('binary-data')
+  })
+
   it('a lexicon-matched plain token renders the text-ref mark', () => {
     const lexicon = new Map<'/' | '@', readonly string[]>([['/', ['fixture-demo']]])
     const { view, shell } = bench({ lexicon })

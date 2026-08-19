@@ -74,6 +74,7 @@ export class SessionInputShell implements SessionInput {
   /** The public provide-channel action face (one stable identity per session). */
   readonly actions: InputActions = {
     setDraft: (text) => { this.setDraft(text) },
+    insertReference: (ref, span) => this.insertReference(ref, span),
     addImages: ids => this.addImages(ids),
     removeImage: (id) => { this.removeImage(id) },
     pruneImages: (ids) => { this.pruneImages(ids) },

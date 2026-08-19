@@ -73,6 +73,8 @@ export interface SessionInputResolver {
 export interface InputActions {
   /** Single public draft write path (full next draft; occurrence math via diff scan). */
   setDraft(text: string): void
+  /** Replace the trigger span with one reference occurrence (span-CAS'd). */
+  insertReference(ref: ReferenceInsert, span: TokenSpan): boolean
   /** Append ordered browser-owned image ids; busy admission phases refuse. */
   addImages(ids: readonly DraftAttachmentId[]): boolean
   /** Remove one browser-owned image id. */

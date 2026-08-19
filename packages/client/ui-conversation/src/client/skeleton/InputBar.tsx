@@ -23,6 +23,7 @@ import type {} from '@deepseek-ai/dsh-goal/client'
 // wire types: apiproxy's sessions contract declares it, and client-runtime's
 // api-remotes import already places it in every client program.
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
+import type { TokenSpan } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { ComposerAttachment, ComposerBarProps } from '../contract/slots.ts'
 import { deriveDecorations } from '../input/decorations.ts'
 import type { DraftDecorations } from '../input/decorations.ts'
@@ -122,31 +123,39 @@ export function InputBar({
     }, 10)
   }
 
-  // Pragmatic file attachment (approach B): read the picked file and insert a
-  // text reference into the draft. Text files include their content so the
-  // model can use it directly; binary files get a size note. The model can
-  // also use tool-fs to read the file from the workspace when available.
+  // File attachment: read the picked file and insert it as a reference chip at
+  // the caret. The draft shows only the filename chip; the file content (or a
+  // size note for binary files) lives in the occurrence's clipboard projection
+  // and expands into the message on submit. The model can also use tool-fs to
+  // read the file from the workspace when available.
   const onFileSelected = (e: ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (file === undefined || inputActions === undefined) return
+    const el = inputRef.current
+    if (el === null) return
+    const { start, end } = selectionOf(el)
+    const span: TokenSpan = { start, end, draftRev: input?.draftRev ?? 0 }
     const isText = file.type.startsWith('text/')
       || /\.(txt|md|json|js|ts|tsx|py|go|rs|c|cpp|h|java|yaml|yml|toml|xml|html|css|sh|sql|log)$/i.test(file.name)
-    const label = `[첨부: ${file.name}]`
+    const label = file.name
     if (!isText) {
-      const current = input?.draft ?? ''
-      const body = `${label} (${file.size} bytes)`
-      inputActions.setDraft(current === '' ? body : `${current}\n${body}`)
+      inputActions.insertReference(
+        { source: 'file', ref: file.name, label, clipboardText: `[첨부: ${file.name}] (${file.size} bytes)` },
+        span,
+      )
       return
     }
     const reader = new FileReader()
     reader.onload = () => {
       const text = typeof reader.result === 'string' ? reader.result : ''
-      const body = text.length > 0
-        ? `${label}\n\`\`\`\n${text.slice(0, 20000)}\n\`\`\``
-        : `${label} (empty)`
-      const current = input?.draft ?? ''
-      inputActions.setDraft(current === '' ? body : `${current}\n${body}`)
+      const clipboardText = text.length > 0
+        ? `[첨부: ${file.name}]\n\`\`\`\n${text.slice(0, 20000)}\n\`\`\``
+        : `[첨부: ${file.name}] (empty)`
+      inputActions.insertReference(
+        { source: 'file', ref: file.name, label, clipboardText },
+        span,
+      )
     }
     reader.readAsText(file)
   }
