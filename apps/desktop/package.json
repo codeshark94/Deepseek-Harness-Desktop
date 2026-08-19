@@ -1,0 +1,15 @@
+{
+  "name": "@deepseek-ai/dsh-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DeepSeek Harness desktop app (Electron wrapper)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-packager . \"DeepSeek Harness\" --platform=darwin --arch=arm64 --out=../../dist-desktop --overwrite --icon=assets/icon.icns"
+  },
+  "devDependencies": {
+    "electron": "43.4.1",
+    "electron-packager": "^17.1.2"
+  }
+}
