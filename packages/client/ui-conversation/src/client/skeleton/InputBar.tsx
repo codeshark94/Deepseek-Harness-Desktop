@@ -46,7 +46,7 @@ export type InputBarProps = ComposerBarProps
 
 export function InputBar({
   useSession, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
-  resolveSubmitMode, toggleCommandMenu, stop, command, t,
+  resolveSubmitMode, stop, command, t,
   renderSlot, useNotices, useLexicon, useMenuLauncher,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
@@ -103,6 +103,7 @@ export function InputBar({
       : `${promptError.error.message} (${promptError.error.code})`)
   }, [promptError, showToast, t, imageLimits])
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const cardRef = useRef<HTMLDivElement | null>(null)
   const dragDepthRef = useRef(0)
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -119,6 +120,35 @@ export function InputBar({
     setTimeout(() => {
       composingRef.current = false
     }, 10)
+  }
+
+  // Pragmatic file attachment (approach B): read the picked file and insert a
+  // text reference into the draft. Text files include their content so the
+  // model can use it directly; binary files get a size note. The model can
+  // also use tool-fs to read the file from the workspace when available.
+  const onFileSelected = (e: ChangeEvent<HTMLInputElement>): void => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file === undefined || inputActions === undefined) return
+    const isText = file.type.startsWith('text/')
+      || /\.(txt|md|json|js|ts|tsx|py|go|rs|c|cpp|h|java|yaml|yml|toml|xml|html|css|sh|sql|log)$/i.test(file.name)
+    const label = `[첨부: ${file.name}]`
+    if (!isText) {
+      const current = input?.draft ?? ''
+      const body = `${label} (${file.size} bytes)`
+      inputActions.setDraft(current === '' ? body : `${current}\n${body}`)
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : ''
+      const body = text.length > 0
+        ? `${label}\n\`\`\`\n${text.slice(0, 20000)}\n\`\`\``
+        : `${label} (empty)`
+      const current = input?.draft ?? ''
+      inputActions.setDraft(current === '' ? body : `${current}\n${body}`)
+    }
+    reader.readAsText(file)
   }
 
   // The Access seat's data: the host-computed permissions projection
@@ -549,11 +579,6 @@ export function InputBar({
     inputRef.current?.focus({ preventScroll: true })
   }
 
-  const onToggleCommandMenu = (): void => {
-    const el = inputRef.current
-    if (el !== null) toggleCommandMenu?.(selectionOf(el))
-  }
-
   // Ordinary sessions retain their primary Send/Stop toggle. A continuable
   // child keeps Send as the primary action and exposes Stop independently so
   // pointer users can queue follow-ups while its current turn is running.
@@ -747,20 +772,25 @@ export function InputBar({
         </div>
         <div className={css.row}>
           <div className={css.tools}>
-            <Tooltip label={t('input.commands')} side="top" delayMs={500}>
+            <Tooltip label={t('input.attach')} side="top" delayMs={500}>
               <button
                 type="button"
                 className={css.add}
-                aria-label={t('input.commands')}
-                aria-haspopup="listbox"
-                aria-expanded={commandMenuOpen}
-                disabled={locked || toggleCommandMenu === undefined}
+                aria-label={t('input.attach')}
+                disabled={locked}
                 onMouseDown={keepFocus}
-                onClick={onToggleCommandMenu}
+                onClick={() => { fileInputRef.current?.click() }}
               >
                 <IconPlusOutline16 size={14} />
               </button>
             </Tooltip>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className={css.fileInput}
+              style={{ display: 'none' }}
+              onChange={onFileSelected}
+            />
             <div className={css.modes}>
               {accessSelect}
               {renderSlot('conversation.input.plan', { locked })}
