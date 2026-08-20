@@ -22,10 +22,16 @@ const REPO_ROOT = process.env.DSH_REPO_ROOT || findRepoRoot(__dirname) || path.r
 const CLI = path.join(REPO_ROOT, 'apps', 'cli', 'lib', 'bin.js')
 const HOST = '127.0.0.1'
 const STARTUP_TIMEOUT_MS = 60_000
-// Optional Ollama launch profile: a configurable desktop profile
-// (temperature/top_p/effort via proxy). Only used when explicitly configured.
-const OLLAMA_PATCH = process.env.DSH_PATCH
-const PROXY_SCRIPT = process.env.DSH_OLLAMA_PROXY
+const OLLAMA_LAUNCH_DIRECTORY = path.join(os.homedir(), '.ollama', 'launch', 'dsh')
+
+function desktopOllamaFile(envName, fileName) {
+  if (process.env[envName]) return process.env[envName]
+  const candidate = path.join(OLLAMA_LAUNCH_DIRECTORY, fileName)
+  return fs.existsSync(candidate) ? candidate : undefined
+}
+
+const OLLAMA_PATCH = desktopOllamaFile('DSH_PATCH', 'desktop-ollama.cordis.yml')
+const PROXY_SCRIPT = desktopOllamaFile('DSH_OLLAMA_PROXY', 'llm-proxy-configurable.mjs')
 
 // Optional Ollama sampling knobs (passed through to the proxy as env vars).
 const OLLAMA_TEMPERATURE = process.env.DSH_OLLAMA_TEMPERATURE

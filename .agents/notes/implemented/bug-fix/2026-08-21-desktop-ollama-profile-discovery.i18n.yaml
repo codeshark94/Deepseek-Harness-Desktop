@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-21-desktop-ollama-profile-discovery.md
+2026-08-21-desktop-ollama-profile-discovery.md: bef76dcb5746634b4e8833bba569267d2f820c32
+2026-08-21-desktop-ollama-profile-discovery.zh.md: 9c00c043969fed320e2f2f1ae9881c07831dbeba
