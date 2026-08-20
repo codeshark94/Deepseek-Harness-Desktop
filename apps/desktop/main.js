@@ -3,6 +3,7 @@
 const { app, BrowserWindow, dialog } = require('electron')
 const { spawn, spawnSync } = require('node:child_process')
 const http = require('node:http')
+const os = require('node:os')
 const path = require('node:path')
 const fs = require('node:fs')
 
@@ -48,6 +49,7 @@ function findNode() {
   if (process.env.DSH_NODE) candidates.push(process.env.DSH_NODE)
   if (process.env.npm_node_execpath) candidates.push(process.env.npm_node_execpath)
   if (!isElectron && process.execPath) candidates.push(process.execPath)
+  candidates.push(path.join(os.homedir(), '.local', 'bin', 'node'))
   candidates.push('/opt/homebrew/bin/node')
   candidates.push('/usr/local/bin/node')
   candidates.push('node') // last resort: rely on PATH
@@ -58,7 +60,7 @@ function findNode() {
       if (!r.error && r.status === 0) return candidate
     } catch { /* try next */ }
   }
-  return 'node'
+  return null
 }
 
 const NODE = findNode()
