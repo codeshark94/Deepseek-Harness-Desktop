@@ -1857,6 +1857,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'message', description: 'message to price without mutation.' }],
         returns: 'content and role-framing tokens under the fixed service heuristic.',
       },
+      {
+        signature: 'estimateHeader(header?: EpochHeader): number',
+        description: 'Heuristically price the non-surface request envelope of a canonical header (instance face of the pure `estimateHeader` export from `estimate.ts`).',
+        parameters: [{ name: 'header', description: 'canonical envelope, or undefined for an empty price.' }],
+        returns: 'system and tool-schema tokens under the fixed service heuristic.',
+      },
     ],
   },
   {

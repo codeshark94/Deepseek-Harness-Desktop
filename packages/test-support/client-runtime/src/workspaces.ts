@@ -75,7 +75,7 @@ export class TestWorkspaces implements IWorkspaces {
    */
   async startUngroupedSession(): Promise<void> {
     this.calls.push({ method: 'startUngroupedSession', args: [] })
-    this.stubs.get('startUngroupedSession')?.()
+    await (this.stubs.get('startUngroupedSession')?.() as Promise<void> | undefined)
   }
 
   /**

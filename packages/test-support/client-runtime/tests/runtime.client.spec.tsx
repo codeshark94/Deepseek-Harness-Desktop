@@ -273,6 +273,26 @@ describe('sessions', () => {
   })
 })
 
+describe('workspaces', () => {
+  it('waits for a stubbed ungrouped-session action before resolving', async () => {
+    const runtime = await SlotTestRuntime.create()
+    let release: (() => void) | undefined
+    const pending = new Promise<void>((resolve) => { release = resolve })
+    runtime.workspaces.stub('startUngroupedSession', () => pending)
+
+    let settled = false
+    const start = runtime.workspaces.startUngroupedSession().then(() => { settled = true })
+    await Promise.resolve()
+
+    expect(runtime.workspaces.calls).toEqual([{ method: 'startUngroupedSession', args: [] }])
+    expect(settled).toBe(false)
+    release!()
+    await start
+    expect(settled).toBe(true)
+    await runtime.dispose()
+  })
+})
+
 describe('stores', () => {
   const createSuiteStore = () => defineStore({
     init: () => ({ note: '' }),
