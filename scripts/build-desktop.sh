@@ -12,8 +12,8 @@ cd "$(dirname "$0")/.."
 echo "==> Installing workspace dependencies"
 pnpm install
 
-echo "==> Building the dsh CLI and web assets"
-pnpm run build
+echo "==> Building the branded dsh CLI and web assets"
+pnpm run build --profile=official
 
 echo "==> Installing desktop app dependencies"
 (cd apps/desktop && pnpm install)

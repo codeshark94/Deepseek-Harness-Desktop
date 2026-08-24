@@ -178,7 +178,7 @@ async function startDsh() {
     if (OLLAMA_PATCH) {
       args.push('--patch', OLLAMA_PATCH)
     }
-    args.push('--host', HOST, '--port', '0')
+    args.push('--host', HOST, '--port', '0', '--no-open')
 
     // Ollama is local and does not need a real key; provide a dummy so dsh
     // does not prompt for an API key on every launch.
