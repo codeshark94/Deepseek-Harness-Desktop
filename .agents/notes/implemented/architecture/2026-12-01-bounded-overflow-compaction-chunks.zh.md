@@ -38,7 +38,7 @@ Status: implemented
 
 ## 后果
 
-- 溢出恢复现在感知容量：此记录取代 [路由模型上下文与压缩策略 Agent Note](2026-07-20-routed-model-context-and-compaction-policy.md) 中关于溢出应绕过容量元数据、尝试一次最大且平衡缩减的声明，并拥有规范的溢出行为。
+- 溢出恢复现在感知容量：此记录取代 [路由模型上下文与压缩策略 Agent Note](2026-07-20-routed-model-context-and-compaction-policy.zh.md) 中关于溢出应绕过容量元数据、尝试一次最大且平衡缩减的声明，并拥有规范的溢出行为。
 - 每次分块摘要调用都落在路由窗口内，因此一次分块缩减不会抛出 `CONTEXT_WINDOW_EXCEEDED` 或让会话卡死。
 - 部署可通过已验证的 `overflowChunkHeadroomTokens` 配置字段调整每个块预留的松弛空间。
 - 无容量与微小窗口路由保留整个表层缩减，因此回放只是降级，而不会被阻塞。

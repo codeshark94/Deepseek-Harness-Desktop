@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-12-01-bounded-overflow-compaction-chunks.md
 2026-12-01-bounded-overflow-compaction-chunks.md: 4fb69fd38d5689f59865dbf0895ed2f322d59e46
-2026-12-01-bounded-overflow-compaction-chunks.zh.md: 933a61d33239f9e8bde7ca3a55ecd5624608c41a
+2026-12-01-bounded-overflow-compaction-chunks.zh.md: 9b255266e803ea57cd972969f4f8ca45f0a69924
