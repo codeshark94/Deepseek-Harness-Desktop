@@ -124,7 +124,9 @@ describe('WorkspacePicker', () => {
 
   it('selects Ungrouped from the footer while workspaces are listed', () => {
     const b = mount([workspace('alpha', 'Alpha')])
-    fireEvent.click(screen.getByRole('menuitem', { name: '未分组' }))
+    const ungrouped = screen.getByRole('menuitem', { name: '未分组' })
+    expect(ungrouped.querySelector('svg')?.getAttribute('width')).toBe('14')
+    fireEvent.click(ungrouped)
     expect(b.onPick).toHaveBeenCalledWith(undefined)
   })
 

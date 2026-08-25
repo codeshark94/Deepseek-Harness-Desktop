@@ -11,7 +11,7 @@
 import type { ReactNode, RefObject } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  Button, IconFolderClose16, IconPlusOutline16, Menu, Modal, type MenuEntry,
+  Button, IconCloseOutline16, IconFolderClose16, IconPlusOutline16, Menu, Modal, type MenuEntry,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   WorkspaceId, WorkspaceListState, WorkspaceView,
@@ -108,7 +108,7 @@ export function WorkspacePickFlow({
   // does not carry the Ungrouped pick.
   const ungroupedEntries: MenuEntry[] = addOnly
     ? []
-    : [{ id: UNGROUPED, label: t('menu.ungrouped'), disabled: flowBusy }]
+    : [{ id: UNGROUPED, label: t('menu.ungrouped'), icon: <IconCloseOutline16 size={14} />, disabled: flowBusy }]
   // With workspaces listed, the add actions pin below the scroll region
   // (divider + always visible); otherwise they ARE the menu. Ungrouped is
   // always part of the hero picker's pickable set.
