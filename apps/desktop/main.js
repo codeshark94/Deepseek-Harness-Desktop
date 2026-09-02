@@ -31,9 +31,9 @@ function desktopOllamaFile(envName, fileName) {
 }
 
 const OLLAMA_PATCH = desktopOllamaFile('DSH_PATCH', 'desktop-ollama.cordis.yml')
-const PROXY_SCRIPT = desktopOllamaFile('DSH_OLLAMA_PROXY', 'llm-proxy-configurable.mjs')
+const PROXY_SCRIPT = process.env.DSH_OLLAMA_PROXY
 
-// Optional Ollama sampling knobs (passed through to the proxy as env vars).
+// Optional Ollama sampling knobs for an explicitly configured proxy.
 const OLLAMA_TEMPERATURE = process.env.DSH_OLLAMA_TEMPERATURE
 const OLLAMA_TOP_P = process.env.DSH_OLLAMA_TOP_P
 const OLLAMA_REASONING_EFFORT = process.env.DSH_OLLAMA_REASONING_EFFORT
@@ -102,10 +102,8 @@ function startProxy() {
       reject(new Error('Could not locate a Node.js executable for the Ollama proxy.'))
       return
     }
-    if (!PROXY_SCRIPT || !fs.existsSync(PROXY_SCRIPT)) {
-      // Proxy is optional; if it is not configured or missing, continue without it.
-      console.log('[proxy] configurable proxy not found, skipping')
-      resolve()
+    if (!fs.existsSync(PROXY_SCRIPT)) {
+      reject(new Error(`Configured Ollama proxy was not found at ${PROXY_SCRIPT}`))
       return
     }
 
@@ -161,8 +159,10 @@ async function startDsh() {
   // Reuse an already-running server when the window is reopened.
   if (serverUrl) return serverUrl
 
-  // Start the configurable Ollama proxy first, then the dsh web server.
-  await startProxy()
+  // Ollama's server already exposes the OpenAI-compatible API. A separate
+  // sampling proxy is opt-in so the desktop app does not claim an
+  // integration port owned by the Ollama GUI.
+  if (PROXY_SCRIPT) await startProxy()
 
   return new Promise((resolve, reject) => {
     if (!NODE) {
