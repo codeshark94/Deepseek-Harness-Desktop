@@ -58,13 +58,21 @@ async function bench(
       mention: '@[Research](dsh-session:InNvdXJjZSI)',
     }],
   })),
-): Promise<{ ctx: Context; fiber: ReturnType<Context['plugin']>; source: InputTriggerSource }> {
+): Promise<{
+  ctx: Context
+  fiber: ReturnType<Context['plugin']>
+  source: InputTriggerSource
+  uploadedFileSource: InputTriggerSource
+}> {
   const ctx = new Context()
-  let source: InputTriggerSource | undefined
+  const registered: InputTriggerSource[] = []
   ctx.provide('inputTriggers', {
     registerSource(candidate: InputTriggerSource) {
-      source = candidate
-      return () => { source = undefined }
+      registered.push(candidate)
+      return () => {
+        const index = registered.indexOf(candidate)
+        if (index >= 0) registered.splice(index, 1)
+      }
     },
   })
   class RemoteService extends Service {
@@ -78,8 +86,10 @@ async function bench(
   ctx.provide('locale', new LocaleRuntime(ctx))
   const fiber = ctx.plugin({ inject: [...inject], apply })
   await fiber.await()
-  if (source === undefined) throw new Error('reference source was not registered')
-  return { ctx, fiber, source }
+  const source = registered.find(candidate => candidate.name === 'reference')
+  const uploadedFileSource = registered.find(candidate => candidate.name === 'file')
+  if (source === undefined || uploadedFileSource === undefined) throw new Error('reference sources were not registered')
+  return { ctx, fiber, source, uploadedFileSource }
 }
 
 describe('apply', () => {
@@ -88,12 +98,15 @@ describe('apply', () => {
       'inputTriggers', 'locale', 'remote', 'remote.fileReferences', 'remote.sessionReferenceResolver',
     ])
     const { fiber } = await bench()
-    let registered: InputTriggerSource | undefined
+    const registered: InputTriggerSource[] = []
     const ctx = new Context()
     ctx.provide('inputTriggers', {
       registerSource(source: InputTriggerSource) {
-        registered = source
-        return () => { registered = undefined }
+        registered.push(source)
+        return () => {
+          const index = registered.indexOf(source)
+          if (index >= 0) registered.splice(index, 1)
+        }
       },
     })
     class RemoteService extends Service {
@@ -107,9 +120,12 @@ describe('apply', () => {
     ctx.provide('locale', new LocaleRuntime(ctx))
     const ownFiber = ctx.plugin({ inject: [...inject], apply })
     await ownFiber.await()
-    expect(registered).toMatchObject({ trigger: '@', name: 'reference', showGroupTitle: false })
+    expect(registered).toEqual(expect.arrayContaining([
+      expect.objectContaining({ trigger: '@', name: 'reference', showGroupTitle: false }),
+      expect.objectContaining({ trigger: '@', name: 'file', showGroupTitle: false }),
+    ]))
     await ownFiber.dispose()
-    expect(registered).toBeUndefined()
+    expect(registered).toEqual([])
     await fiber.dispose()
   })
 
@@ -317,6 +333,15 @@ describe('pick and codec', () => {
     })
     expect(source.codec?.clipboardText(mention)).toBe(mention)
     await expect(source.codec?.serialize(mention, new AbortController().signal)).resolves.toBe(mention)
+  })
+
+  it('serializes uploaded absolute paths as canonical file mentions', async () => {
+    const { uploadedFileSource } = await bench()
+    expect(uploadedFileSource).toMatchObject({ trigger: '@', name: 'file', showGroupTitle: false })
+    const codec = uploadedFileSource.codec
+    if (codec === undefined) throw new Error('uploaded file codec was not registered')
+    await expect(codec.serialize('/fixture/x.txt', new AbortController().signal)).resolves.toBe('@/fixture/x.txt')
+    await expect(codec.serialize('/fixture/a b.txt', new AbortController().signal)).resolves.toBe('@"/fixture/a b.txt"')
   })
 
   it('ignores candidates that do not carry a source-owned value', async () => {

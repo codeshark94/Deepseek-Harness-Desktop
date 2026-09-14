@@ -1370,6 +1370,8 @@ describe('decorations', () => {
     expect(shell.snapshot.occurrences).toHaveLength(1)
     const occurrence = shell.snapshot.occurrences[0]!
     expect(occurrence.label).toBe('report.pdf')
+    expect(occurrence.ref).toBe('/fixture/x.txt')
+    expect(occurrence.appearance).toBe('file')
     // The draft holds the file reference, not its raw content.
     expect(shell.snapshot.draft).toContain('@report.pdf')
     expect(shell.snapshot.draft).not.toContain('binary-data')

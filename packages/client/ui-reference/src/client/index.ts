@@ -85,8 +85,30 @@ export function apply(ctx: ClientContext): void {
       serialize: ref => Promise.resolve(ref),
     },
   }
+  // Uploads enter through the attachment control, not @ completion. Keep a
+  // separate owner so the attachment rail can identify them while its empty
+  // candidate list contributes no selectable menu rows.
+  const uploadedFileSource: InputTriggerSource = {
+    trigger: '@',
+    name: 'file',
+    showGroupTitle: false,
+    candidates: async () => [],
+    onPick: () => undefined,
+    codec: {
+      clipboardText: ref => uploadedFileMention(ref),
+      serialize: async ref => uploadedFileMention(ref),
+    },
+  }
   const inputTriggers = ctx.get('inputTriggers') as InputTriggerServiceContract
   ctx.effect(() => inputTriggers.registerSource(source), 'ui-reference: @ source')
+  ctx.effect(() => inputTriggers.registerSource(uploadedFileSource), 'ui-reference: uploaded file source')
+}
+
+/** Serialize one uploaded workspace path as the canonical file mention. */
+function uploadedFileMention(path: string): string {
+  const mention = formatFileMention({ path, kind: 'file' }, false)
+  if (mention === undefined) throw new Error('uploaded file path cannot be represented as a file reference')
+  return mention
 }
 
 type Translate = (key: ReferenceKey) => string

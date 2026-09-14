@@ -174,7 +174,13 @@ export function InputBar({
     void file.text().then(content => inputActions.uploadFile(file.name, content)).then((result) => {
       if (!result.ok) return
       inputActions.insertReference(
-        { source: 'file', ref: file.name, label, clipboardText: `[첨부: ${file.name}] (${result.value.path})` },
+        {
+          source: 'file',
+          ref: result.value.path,
+          label,
+          appearance: 'file',
+          clipboardText: `[첨부: ${file.name}] (${result.value.path})`,
+        },
         span,
       )
     })

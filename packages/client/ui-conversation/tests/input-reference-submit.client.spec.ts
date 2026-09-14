@@ -155,6 +155,43 @@ describe('reference submission', () => {
     })
   })
 
+  it('serializes an uploaded file path through its owning source', async () => {
+    const path = '/fixture/.dsh/attachments/report.pdf'
+    const mention = '@/fixture/.dsh/attachments/report.pdf'
+    const serializeReference = vi.fn((_source: string, _ref: string, _signal: AbortSignal) => Promise.resolve(mention))
+    const sink = vi.fn(() => Promise.resolve<SubmitOutcome>({ kind: 'success' }))
+    const inputTriggers = {
+      serializeReference,
+      track: vi.fn(),
+    } as unknown as InputTriggerController
+    const shell = new SessionInputShell({
+      actx: {} as ClientContext,
+      sessionId,
+      inputTriggers: () => inputTriggers,
+      defaultSink: sink,
+      uploadFile,
+      commandImages,
+    })
+    shell.setDraft('@report.pdf')
+    expect(shell.insertReference({
+      source: 'file',
+      ref: path,
+      label: 'report.pdf',
+      appearance: 'file',
+      clipboardText: `[첨부: report.pdf] (${path})`,
+    }, {
+      start: 0,
+      end: '@report.pdf'.length,
+      draftRev: shell.snapshot.draftRev,
+    })).toBe(true)
+
+    shell.submit('queue')
+    await vi.waitFor(() => {
+      expect(sink).toHaveBeenCalledWith(mention, [], 'queue', expect.any(AbortSignal))
+    })
+    expect(serializeReference).toHaveBeenCalledWith('file', path, expect.any(AbortSignal))
+  })
+
   it('aborts Host-side preparation when the input shell is disposed', () => {
     let signal: AbortSignal | undefined
     const shell = new SessionInputShell({
